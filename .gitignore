@@ -1,0 +1,74 @@
+# ---- The installation ----
+# This repository is the root of an installation ($STELLAR_ROOT). Everything the installer and the build create
+# next to the sources belongs to the machine, not to the repository.
+/modules/
+/packages/
+/manifests/
+/projects/
+/tools/
+/config/
+/artifacts/
+/Docs/Modules/
+
+# ---- Build output ----
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.nupkg
+*.snupkg
+*.binlog
+*.log
+*.tlog
+project.lock.json
+project.fragment.lock.json
+*.nuget.props
+*.nuget.targets
+
+# ---- Native ----
+*.obj
+*.o
+*.pch
+*.ipch
+ipch/
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.idb
+*.iobj
+*.ipdb
+*.VC.db
+*.VC.opendb
+
+# ---- Tests ----
+[Tt]est[Rr]esult*/
+*.trx
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# ---- IDE ----
+.vs/
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+*.sln.iml
+*.iml
+_ReSharper*/
+*.code-workspace
+
+# ---- OS ----
+Thumbs.db
+.DS_Store
+~$*
+*~

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <RootNamespace>Stellar.Cli</RootNamespace>
+        <AssemblyName>Stellar.Cli</AssemblyName>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <InvariantGlobalization>true</InvariantGlobalization>
+
+        <Version>$(StellarCliVersion)</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+
+        <IsPackable>true</IsPackable>
+        <PackageId>Stellar.Cli</PackageId>
+        <Description>StellarEngine command line: a thin wrapper over Stellar.Tools</Description>
+
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>stellar</ToolCommandName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="$(StellarRoot)SDK/src/Stellar.Tools/Stellar.Tools.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Spectre.Console"/>
+        <PackageReference Include="Spectre.Console.Cli"/>
+        <PackageReference Include="XmlDocMarkdown.Core"/>
+    </ItemGroup>
+</Project>

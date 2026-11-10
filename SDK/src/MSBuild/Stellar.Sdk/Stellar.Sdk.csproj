@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+
+        <Version>$(StellarSdkVersion)</Version>
+
+        <IsPackable>true</IsPackable>
+        <PackageId>Stellar.Sdk</PackageId>
+        <PackageType>MSBuildSdk</PackageType>
+        <Description>StellarEngine MSBuild SDK</Description>
+
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <NoPackageAnalysis>true</NoPackageAnalysis>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <NoWarn>$(NoWarn);CS2008</NoWarn>
+    </PropertyGroup>
+
+    <!-- SDK payload: build logic -->
+    <ItemGroup>
+        <None Include="Sdk/*.props;Sdk/*.targets" Pack="true" PackagePath="Sdk/"/>
+        <None Include="$(StellarRoot)Shared/Build/Stellar.Versions.props" Pack="true" PackagePath="Sdk/" Link="Sdk/Stellar.Versions.props"/>
+        <None Include="$(StellarRoot)Shared/Build/Stellar.Artifacts.props" Pack="true" PackagePath="Sdk/" Link="Sdk/Stellar.Artifacts.props"/>
+    </ItemGroup>
+
+    <!-- SDK payload: binaries, built before packing -->
+    <ItemGroup>
+        <ProjectReference Include="$(StellarRoot)SDK/src/MSBuild/Stellar.Sdk.Tasks/Stellar.Sdk.Tasks.csproj" ReferenceOutputAssembly="false" PrivateAssets="all"/>
+        <ProjectReference Include="$(StellarRoot)SDK/src/Roslyn/Stellar.Sdk.Analyzers/Stellar.Sdk.Analyzers.csproj" ReferenceOutputAssembly="false" PrivateAssets="all"/>
+    </ItemGroup>
+
+    <Target Name="StellarCollectSdkBinaries" BeforeTargets="_GetPackageFiles;GenerateNuspec">
+        <ItemGroup>
+            <None Include="$(StellarArtifactsBinDir)Stellar.Sdk.Tasks/$(Configuration)/*.dll" Pack="true" PackagePath="Sdk/tasks/"/>
+            <None Include="$(StellarArtifactsBinDir)Stellar.Sdk.Analyzers/$(Configuration)/Stellar.Sdk.Analyzers.dll" Pack="true" PackagePath="Sdk/analyzers/"/>
+        </ItemGroup>
+    </Target>
+</Project>

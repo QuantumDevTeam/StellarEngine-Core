@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <RootNamespace>Stellar.Sdk.Tasks</RootNamespace>
+
+        <Version>$(StellarSdkVersion)</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+
+        <IsPackable>false</IsPackable>
+
+        <!-- Everything a task needs at runtime must sit next to it inside the SDK package -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="$(StellarRoot)SDK/src/Stellar.Tools/Stellar.Tools.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Provided by the MSBuild that loads the tasks -->
+        <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.Build.Utilities.Core" ExcludeAssets="runtime" PrivateAssets="all"/>
+    </ItemGroup>
+</Project>

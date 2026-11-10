@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <!-- netstandard2.0 keeps Tools loadable from MSBuild tasks, including the .NET Framework MSBuild of Visual Studio -->
+        <TargetFrameworks>netstandard2.0;net9.0</TargetFrameworks>
+        <!-- One output folder per framework -->
+        <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+        <RootNamespace>Stellar.Tools</RootNamespace>
+
+        <Version>$(StellarToolsVersion)</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+
+        <IsPackable>true</IsPackable>
+        <PackageId>Stellar.Tools</PackageId>
+        <Description>StellarEngine tooling library: the logic behind the SDK tasks, the CLI and the Editor</Description>
+
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="$(StellarRoot)Kernel/src/Managed/Stellar.Kernel/Stellar.Kernel.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+        <Compile Include="$(StellarRoot)Kernel/src/Managed/Stellar.Kernel/Polyfills/IsExternalInit.cs" Link="Polyfills/IsExternalInit.cs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="Glob"/>
+    </ItemGroup>
+</Project>
