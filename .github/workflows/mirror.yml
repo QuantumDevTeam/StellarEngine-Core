@@ -12,7 +12,8 @@ name: Mirror
 # Public components work with the token of the workflow. A component it cannot clone (a private repository) is kept
 # as the mirror has it; the secret STELLAR_MIRROR_TOKEN (a fine-grained token with read access to their contents)
 # lets the workflow refresh private ones too.
-# The first snapshot comes from a machine: scripts/mirror.ps1 -Push.
+# The first snapshot comes from a machine: scripts/mirror.ps1 -Push. After that this workflow is the only writer:
+# on a machine, mirror.ps1 without -Push shows the next snapshot, Run workflow here publishes it.
 
 on:
   workflow_dispatch:
@@ -107,7 +108,20 @@ jobs:
           $release = -not (git ls-remote --tags origin "refs/tags/$tag")
           $tagArguments = if ($release) { @('-Tag', $tag) } else { @() }
 
-          & "$workspace/scripts/mirror.ps1" -Remote 'https://github.com/${{ github.repository }}.git' -Push -Keep $keep @tagArguments
+          # The mirror may move while the snapshot is made (a push from a machine, a ref GitHub has not caught up with
+          # yet): a rejected push reads the mirror again and makes the snapshot again, on top of what is there now
+          for ($attempt = 1; ; $attempt++) {
+            try {
+              & "$workspace/scripts/mirror.ps1" -Remote 'https://github.com/${{ github.repository }}.git' -Push -Keep $keep @tagArguments
+              break
+            }
+            catch {
+              if ($attempt -ge 3) { throw }
+              Write-Host "::warning::Snapshot attempt $attempt failed ($($_.Exception.Message)): reading the mirror again"
+              Remove-Item "$workspace/.mirror" -Recurse -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds (15 * $attempt)
+            }
+          }
           "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT

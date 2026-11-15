@@ -18,7 +18,9 @@
     Nothing of the working folders is touched. The mirror lives in its own bare repository, <root>/.mirror (ignored
     by the core), and the commit is built with git plumbing only.
 
-    Without -Push the commit stays local and the script prints the command that publishes it.
+    Without -Push the commit stays local and the script prints the command that publishes it. Once the mirror has
+    its first snapshot, its workflow (.github/workflows/mirror.yml) is the one that pushes: on a machine, run this
+    without -Push to see the next snapshot, and Run workflow in the mirror to publish it.
 
 .PARAMETER Remote
     The mirror repository.
