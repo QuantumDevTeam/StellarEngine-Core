@@ -53,8 +53,8 @@ assemblies with the same classes (see [Native core](NativeAbi.md)). `StellarNati
 
 | Value | Default | Reference with sources |
 |---|---|---|
-| `Cli` | On Windows | The built `Stellar.Native.Core.Wrapper.Cli.dll`, x64, with `Stellar.Native.Core.dll` and `Ijwhost.dll` |
-| `Managed` | Elsewhere, and with `PublishAot` | `ProjectReference` to `Stellar.Native.Core.Wrapper.Managed` |
+| `Cli` | On Windows, once the C++/CLI wrapper is built in the installation | The built `Stellar.Native.Core.Wrapper.Cli.dll`, x64, with `Stellar.Native.Core.dll` and `Ijwhost.dll` |
+| `Managed` | Elsewhere, on Windows without C++/CLI support, and with `PublishAot` | `ProjectReference` to `Stellar.Native.Core.Wrapper.Managed` |
 
 With sources every project references the wrapper, since its classes are part of the API of `Stellar.Core`. With
 packages the wrapper comes inside the `Stellar.Core` package, which `scripts/build.ps1 -Pack` makes on the machine

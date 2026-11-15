@@ -23,6 +23,12 @@
         "files": [
           "Shared/Branding/Logo.png"
         ]
+      },
+      {
+        "src": "scripts/bootstrap",
+        "files": [
+          "install.ps1"
+        ]
       }
     ],
     "output": "artifacts/docs/site",

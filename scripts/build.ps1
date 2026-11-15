@@ -85,6 +85,18 @@ function Find-MSBuild {
     return $msbuild
 }
 
+# Whether Visual Studio can build the C++/CLI wrapper. Without it the engine works the same over P/Invoke
+function Test-CppCliSupport {
+    if ($IsWindows -eq $false) { return $false }
+    if ($env:STELLAR_CPPCLI) { return $env:STELLAR_CPPCLI -eq '1' }
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path $vswhere)) { return $false }
+
+    $found = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.CLI.Support -property installationPath
+    return [bool]$found
+}
+
 # The 'stellar' command: Stellar.Cli as a global dotnet tool ($DOTNET_CLI_HOME moves it, for sandboxes)
 function Test-StellarTool {
     return [bool](dotnet tool list -g | Select-String -Pattern '^stellar\.cli\s' -Quiet)
@@ -146,13 +158,19 @@ if ($Uninstall) {
 
 if ($Install) { $Pack = $true }
 
-# C++/CLI exists on Windows only, and needs the C++ toolchain
-$canBuildCli = -not $SkipNative -and $IsWindows -ne $false
+# Stellar.Core carries the native core in its package: there is nothing to pack without it
+if ($SkipNative -and $Pack) { throw '-Pack and -Install need the native core: drop -SkipNative (Visual Studio with the C++ workload)' }
+
+# C++/CLI exists on Windows only, and needs the C++/CLI component of Visual Studio on top of the C++ toolchain
+$canBuildCli = -not $SkipNative -and (Test-CppCliSupport)
+if (-not $SkipNative -and -not $canBuildCli) {
+    Write-Host 'C++/CLI support not found in Visual Studio: the C++/CLI wrapper is not built, the engine uses the P/Invoke wrapper (Managed). Add "C++/CLI support" in the Visual Studio Installer to get both.' -ForegroundColor Yellow
+}
 # @(): a one-element array out of an if would be unrolled into a string
 $wrappers = @(if ($canBuildCli) { 'Cli', 'Managed' } else { 'Managed' })
 
 if (-not $Wrapper) { $Wrapper = $wrappers[0] }
-if ($wrappers -notcontains $Wrapper) { throw "The $Wrapper wrapper cannot be built here: use -Wrapper Managed" }
+if ($wrappers -notcontains $Wrapper) { throw "The $Wrapper wrapper cannot be built here (no C++/CLI support): use -Wrapper Managed" }
 
 if (-not $SkipNative) {
     $msbuild = Find-MSBuild
@@ -164,9 +182,11 @@ if (-not $SkipNative) {
     }
 
     # Built by the MSBuild of Visual Studio: the .NET SDK cannot build C++/CLI
-    Invoke-Step 'C++/CLI wrapper' {
-        & $msbuild (Join-Path $root 'Core/src/NativeInterop/Stellar.Native.Core.Wrapper.Cli/Stellar.Native.Core.Wrapper.Cli.vcxproj') `
-            -restore "-p:Configuration=$Configuration" -p:Platform=x64 -m -nologo -v:minimal
+    if ($canBuildCli) {
+        Invoke-Step 'C++/CLI wrapper' {
+            & $msbuild (Join-Path $root 'Core/src/NativeInterop/Stellar.Native.Core.Wrapper.Cli/Stellar.Native.Core.Wrapper.Cli.vcxproj') `
+                -restore "-p:Configuration=$Configuration" -p:Platform=x64 -m -nologo -v:minimal
+        }
     }
 
     if (-not $SkipTests) {

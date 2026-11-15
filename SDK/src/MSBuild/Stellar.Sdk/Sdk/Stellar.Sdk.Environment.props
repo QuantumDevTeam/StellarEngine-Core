@@ -4,7 +4,7 @@
 
     <!--
         Locating the installation ($STELLAR_ROOT, a checkout of StellarEngine-Core), in order of priority:
-          1. the StellarRoot property (modules/ and projects/ of an installation set it)
+          1. the StellarRoot property (stellar modules build passes it, the core sets it for itself)
           2. the STELLAR_ROOT environment variable
           3. a directory above the project that contains manifests/engine.manifest.json
           4. the registry of the user, $STELLAR_HOME or ~/.stellar: installations.props, generated from

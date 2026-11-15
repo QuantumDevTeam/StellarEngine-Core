@@ -41,7 +41,7 @@ copy in `Stellar.Sdk.Environment.props`, since it cannot call into Tools at eval
 
 The installation is found in this order:
 
-1. the `StellarRoot` MSBuild property: `modules/` and `projects/` set it for everything inside them;
+1. the `StellarRoot` MSBuild property: `stellar modules build` passes it, the core sets it for its own projects;
 2. the `STELLAR_ROOT` environment variable;
 3. a directory above the project that contains `manifests/engine.manifest.json`;
 4. the registry of the user: the installation of this orchestra version.

@@ -70,7 +70,9 @@ it names `Stellar.Core.Identifier`, and the SDK decides which assembly provides 
 | Toolchain | Visual Studio with C++/CLI support | the .NET SDK, plus a C++ compiler for the exports |
 | Native AOT | not supported by C++/CLI | works |
 
-`StellarNativeWrapper` selects one: `Cli` on Windows, `Managed` elsewhere and whenever `PublishAot` is set.
+`StellarNativeWrapper` selects one: `Cli` on Windows when the C++/CLI wrapper is built in the installation, `Managed`
+otherwise and whenever `PublishAot` is set. `scripts/build.ps1` builds the C++/CLI wrapper only where Visual Studio
+has C++/CLI support, so a machine without it simply works over P/Invoke.
 
 ```bash
 dotnet build -p:StellarNativeWrapper=Managed

@@ -58,7 +58,7 @@ Read-only, set by the SDK: `StellarIsModule`, `StellarModuleKnown`, `StellarModu
 
 | Property / item | Default | Meaning |
 |---|---|---|
-| `StellarNativeWrapper` | `Cli` on Windows, `Managed` elsewhere and with `PublishAot` | The wrapper of the native core |
+| `StellarNativeWrapper` | `Cli` on Windows when the C++/CLI wrapper is built, `Managed` otherwise and with `PublishAot` | The wrapper of the native core |
 | `StellarReferenceNativeWrapper` | `true` | Reference the wrapper (with sources) |
 | `StellarNativeConfiguration` | `$(Configuration)` | Which native build to take from `artifacts/bin` |
 | `<StellarNativeLibrary Include="path.dll"/>` | the DLLs of the native projects of a module | Copied next to the assembly, packed into `runtimes/win-x64/native` |

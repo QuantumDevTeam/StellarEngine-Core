@@ -33,7 +33,20 @@ engine, and it builds from a clean clone.
 
 ## Installing
 
-You need the .NET 9 SDK, and Visual Studio 2026 with the C++ workload for the native part.
+You need Git, the .NET 9 SDK (9.0.300 or later) and Visual Studio with the C++ workload. C++/CLI support is optional:
+without it the engine uses the P/Invoke wrapper of the native core.
+
+The installer checks all of that, tells how to get what is missing, then clones, builds and installs the core:
+
+```powershell
+irm https://<host>/install.ps1 | iex
+```
+
+Options go through the environment when piped (`STELLAR_INSTALL_PATH`, `STELLAR_INSTALL_REF`,
+`STELLAR_INSTALL_MODULES`), or as parameters:
+`& ([scriptblock]::Create((irm https://<host>/install.ps1))) -Path D:\StellarEngine -Modules Stellar.FileSystem`.
+`-CheckOnly` only checks the toolchain. The script is `scripts/bootstrap/install.ps1`, published at the root of the
+documentation site. By hand:
 
 ```bash
 git clone <StellarEngine-Core> StellarEngine
@@ -57,7 +70,7 @@ powershell -File scripts/build.ps1
 | Option | Effect |
 |---|---|
 | `-Configuration Release` | Release build, Debug by default |
-| `-SkipNative` | Managed part only, for machines with no C++ toolchain: only the `Managed` wrapper |
+| `-SkipNative` | Managed part only, for machines with no C++ toolchain: only the `Managed` wrapper; cannot pack or install |
 | `-Wrapper Cli\|Managed` | The wrapper `Stellar.Core` is packed with, the one the SDK picks by default |
 | `-SkipTests` | Does not run the tests |
 | `-Pack` | Also fills the local feed, `packages/` |
