@@ -1,6 +1,6 @@
 # StellarEngine — Versioning Policy
 
-- [README.md](./../README.md)
+- [README.md](../../README.md)
 
 ## 1. General Concept
 
@@ -112,5 +112,5 @@ After `v1.0.0`:
 
 Also see:
 - [GitPolicy.md](GitPolicy.md)
-- [CONTRIBUTING.md](./../CONTRIBUTING.md)
-- [README.md](./../README.md)
+- [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- [README.md](../../README.md)

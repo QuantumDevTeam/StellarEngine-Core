@@ -1,6 +1,6 @@
 # Native core and its boundaries
 
-- [README.md](./../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 Anything C++ may ever need is written in C++. The native core owns the objects and the registries; managed code holds
 an identifier or a handle and passes it back. C# is for logic, virtualization and object models on top.
@@ -192,7 +192,7 @@ The native core follows the handle and umbrella rules of the Kernel:
 ```
 
 A native project of a module gets the include directories, `STELLAR_KERNEL_STATIC` and the import libraries from
-`Shared/Build/Stellar.Native.Module.props` (see [Modules](Modules.md)); the toolchain itself comes from
+`Shared/Build/Stellar.Native.Module.props` (see [Modules](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Modules.html)); the toolchain itself comes from
 `Shared/Build/Stellar.Native.props`, shared with the core. Inside a module, paths start at the root of the module.
 
 Headers of the C++/CLI wrapper end with `.cli.h`: MSVC also searches the folders of the open includes, and a wrapper

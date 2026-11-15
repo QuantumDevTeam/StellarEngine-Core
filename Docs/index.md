@@ -1,33 +1,27 @@
-<p align="center"><img src="../Shared/Branding/stellar_1x1.svg" alt="StellarEngine" width="180"/></p>
+<p align="center"><img src="../Shared/Branding/stellar_1x1.svg" alt="StellarEngine" width="160"/></p>
 
-# StellarEngine
+# StellarEngine-Core
 
-A hypermodular game engine built from the bottom up: a C++ native core, a managed core over it, and everything else as
-modules, each in a repository of its own.
+The core of [StellarEngine](https://quantumdevteam.github.io/StellarEngine-Mono/): the one component installed into the
+root of every installation. This site is about the core alone: how it is built, the formats it reads, the SDK it gives
+modules and games, and its API. Everything about the engine as a whole (installing it, getting started, the
+architecture, the modules, the orchestra) is on the [site of the engine](https://quantumdevteam.github.io/StellarEngine-Mono/).
 
-```powershell
-irm https://quantumdevteam.github.io/StellarEngine-Core/install.ps1 | iex
-```
+## What the core is
 
-See [Installing](Install.md) for what it needs and what it does. The pages here are the Markdown files of the
-repository, so the same text is in the `Docs/` folder; the [API reference](xref:Stellar.Kernel) is generated from
-the code of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`.
+| Part | What |
+|---|---|
+| `Stellar.Kernel` | the contracts every layer builds on, managed and native (the C ABI) |
+| `Stellar.Core` | the managed core over the native one, with two interchangeable wrappers |
+| `Stellar.Runtime` | loads the modules and the application, runs the stages and the main loop |
+| `Stellar.Sdk` | the MSBuild SDK of modules and games, with its tasks and analyzers |
+| `Stellar.Tools`, `stellar` | the tooling library and the command line over it |
 
-## Start here
-
-- [Installing](Install.md)
-
-- [README](../README.md)
-- [Architecture](Architecture.md)
-- [Design Philosophy](DesignPhilosophy.md)
-
-## Architecture
+## Architecture of the core
 
 - [Overview](Architecture/Overview.md)
 - [Core](Architecture/Core.md)
 - [Pipeline](Architecture/Pipeline.md)
-- [Repository](Architecture/Repository.md)
-- [Modules](Architecture/Modules.md)
 - [SDK](Architecture/Sdk.md)
 - [Runtime](Architecture/Runtime.md)
 - [Tools](Architecture/Tools.md)
@@ -40,20 +34,11 @@ the code of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Too
 - [Engine manifest](Formats/EngineManifest.md)
 - [Resource container](Formats/ResourceContainer.md)
 
+The JSON schemas of these files are published here, under [`/schemas/`](https://quantumdevteam.github.io/StellarEngine-Core/schemas/stellar.module.schema.json).
+
 ## Reference
 
+- [API reference](xref:Stellar.Kernel), generated from the code of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`
 - [SDK properties and items](Reference/Sdk.Properties.md)
 - [Diagnostics](Reference/Diagnostics.md)
-
-## Project
-
-- [Contributing](../CONTRIBUTING.md)
-- [Git policy](GitPolicy.md)
-- [Versioning](Versioning.md)
 - [Migrating to 0.8](Migration-0.8.md)
-- [License](../LICENSE.md)
-- [CLA](../CLA.md)
-
----
-
-<img src="../Shared/Branding/logo_clean.svg" alt="QuantumDevTeam" width="32"/> StellarEngine is made by QuantumDevTeam.

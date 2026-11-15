@@ -30,14 +30,9 @@
         "files": [
           "**/*.md",
           "toc.yml"
-        ]
-      },
-      {
-        "files": [
-          "README.md",
-          "CONTRIBUTING.md",
-          "LICENSE.md",
-          "CLA.md"
+        ],
+        "exclude": [
+          "Engine/**"
         ]
       },
       {
@@ -52,6 +47,7 @@
       {
         "files": [
           "Shared/Branding/stellar_1x1.svg",
+          "Shared/Branding/stellar_icon.svg",
           "Shared/Branding/logo_clean.svg"
         ]
       },
@@ -72,14 +68,15 @@
     "output": "artifacts/docs/site",
     "template": [
       "default",
-      "modern"
+      "modern",
+      "Shared/Docs/Template"
     ],
     "globalMetadata": {
-      "_appName": "StellarEngine",
-      "_appTitle": "StellarEngine",
-      "_appFooter": "StellarEngine by QuantumDevTeam",
-      "_appLogoPath": "Shared/Branding/stellar_1x1.svg",
-      "_appFaviconPath": "Shared/Branding/stellar_1x1.svg",
+      "_appName": "StellarEngine-Core",
+      "_appTitle": "StellarEngine-Core",
+      "_appFooter": "StellarEngine-Core, the core of StellarEngine, by QuantumDevTeam",
+      "_appLogoPath": "Shared/Branding/stellar_icon.svg",
+      "_appFaviconPath": "Shared/Branding/stellar_icon.svg",
       "_enableSearch": true,
       "_gitContribute": {
         "repo": "https://github.com/QuantumDevTeam/StellarEngine-Core",

@@ -119,6 +119,7 @@ public sealed class ModuleScaffolder
             ["SdkVersion"] = StellarVersions.Sdk,
             // Every component has a site of its own next to the one of the core: same host, its id as the path
             ["CoreSiteUri"] = StellarVersions.SiteUri,
+            ["EngineSiteUri"] = StellarVersions.EngineSiteUri,
             ["ModuleSiteUri"] = new Uri(new Uri(StellarVersions.SiteUri), "/" + request.Id + "/").AbsoluteUri,
             ["OrchesterVersion"] = StellarVersions.Orchester,
             ["StellarRoot"] = _installation.Root,

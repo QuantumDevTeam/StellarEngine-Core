@@ -52,7 +52,7 @@ powershell -File <root>\scripts\solution.ps1
 ```
 
 `stellar info` shows the installation and the registry of the user (`~/.stellar`). `scripts/solution.ps1` writes
-`StellarEngine.sln`, the core with every module and tool, for the IDE. See [the layout](Architecture/Repository.md).
+`StellarEngine.sln`, the core with every module and tool, for the IDE. See [the layout](Repository.md).
 
 ## Removing it
 

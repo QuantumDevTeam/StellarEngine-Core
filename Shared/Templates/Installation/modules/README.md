@@ -15,4 +15,4 @@ A module that lives elsewhere, e.g. a repository being worked on:
 stellar modules add F:/project/CS/Stellar.Sample
 ```
 
-See `Docs/Architecture/Modules.md` at the root of the installation.
+See `Docs/Engine/Modules.md` at the root of the installation.

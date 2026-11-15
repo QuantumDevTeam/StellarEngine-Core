@@ -1,6 +1,6 @@
 # SDK
 
-- [README.md](./../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 `Stellar.Sdk` is the MSBuild SDK every module and game is built with. It decides what a project references and adds the
 engine steps to the build. It does not define engine behavior.
@@ -29,7 +29,7 @@ The SDK itself comes from the local feed through `NuGet.config`. `stellar projec
 generate both files; a project under the root of the installation also finds the `NuGet.config` of the root.
 
 A module project needs even less: it is nearly empty, and the SDK takes its kind, version and dependencies from its
-descriptor. See [Modules](Modules.md). Every property: [Sdk.Properties](../Reference/Sdk.Properties.md).
+descriptor. See [Modules](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Modules.html). Every property: [Sdk.Properties](../Reference/Sdk.Properties.md).
 
 ## Kinds of projects
 

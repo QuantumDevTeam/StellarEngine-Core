@@ -1,6 +1,6 @@
 # `.stellar.module`
 
-- [README.md](./../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 The identity of a module in the engine: the file `<Id>.stellar.module` at the root of the module folder. The schema
 is `Shared/Schemas/stellar.module.schema.json`, published on the site of the core, and `stellar modules new` writes the

@@ -1,6 +1,6 @@
 # `engine.manifest.json`
 
-- [README.md](./../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 How an installation finds its modules, and what it changes in them: `manifests/engine.manifest.json`, created by
 `stellar install`. The schema is `Shared/Schemas/engine.manifest.schema.json`.
@@ -68,7 +68,7 @@ stellar modules reset Stellar.Physics                 # removes the entry
 
 | File | For |
 |---|---|
-| `stellar.modules.props` | The catalog MSBuild imports, see [Modules](../Architecture/Modules.md) |
+| `stellar.modules.props` | The catalog MSBuild imports, see [Modules](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Modules.html) |
 | `stellar.modules.json` | The same modules in load order, for tools that read JSON |
 
 ## Validation

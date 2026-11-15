@@ -2,8 +2,8 @@
 
 {{ModuleDescription}}
 
-A `{{ModuleLevel}}` module of [StellarEngine]({{CoreSiteUri}}). Its site is {{ModuleSiteUri}}, built from the Markdown
-files of `Docs/` with DocFX; the whole engine, with every module, is on the site of the orchestra.
+A `{{ModuleLevel}}` module of [StellarEngine]({{EngineSiteUri}}). Its site is {{ModuleSiteUri}}, built from the Markdown
+files of `Docs/` with DocFX; the whole engine, with every module, is on the [site of the engine]({{EngineSiteUri}}).
 
 ## Using it
 

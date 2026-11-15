@@ -1,6 +1,6 @@
 # Repository and installation layout
 
-- [README.md](./../../README.md)
+- [README.md](../../README.md)
 
 ## One tree: the core is the root
 
@@ -158,18 +158,31 @@ snapshot stays local and the script prints the push command; `-Tag` marks a rele
 
 ### Sites
 
-Every repository publishes its documentation with DocFX to GitHub Pages, by the same `.github/workflows/docs.yml`:
+Every repository publishes its documentation with DocFX to GitHub Pages, by the same `.github/workflows/docs.yml`.
+Each site says where it is: the site of the engine is about the engine as a whole, the site of a component about that
+component alone.
 
-| Repository | Site | Content |
+| Site | Address | Content |
 |---|---|---|
-| StellarEngine-Core | `StellarSiteUri` of `Shared/Build/Stellar.Versions.props` | `Docs/`, the API reference of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`, the JSON schemas (`/schemas/`), the installer (`/install.ps1`) |
+| the engine | `StellarEngineSiteUri`, built from the mirror | the home of StellarEngine: getting started, the guide (`Docs/Engine/` of the core: installing, architecture, modules, this page, the project), the core under `/core/`, each component under `/modules/<Module>/` or `/tools/<Tool>/`, the installer and the schemas |
+| the core | `StellarSiteUri` | the core alone: `Docs/` without `Docs/Engine/`, the API reference of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`, the JSON schemas (`/schemas/`), the installer (`/install.ps1`) |
 | a module | the same host, `/<Module>/` | its `Docs/` and README; `stellar modules new` creates them with `docfx.json` and the workflow |
-| the mirror | its own Pages | the orchestra: the core under `/core/`, each component under `/modules/<Module>/` or `/tools/<Tool>/`, the installer and the schemas |
+
+Both addresses are set once, in `Shared/Build/Stellar.Versions.props`. The pages about the engine as a whole live in
+the core, in `Docs/Engine/`, since the mirror is generated and holds nothing of its own; the site of the core leaves
+them out and links to the site of the engine instead.
 
 The workflow tells the mirror by the `.orchestra` file `scripts/mirror.ps1` puts at the root of each snapshot (the
-commits it was made of): there it runs `scripts/orchestra-site.ps1`, which writes `docfx.orchestra.json`, and builds
-that instead of `docfx.json`. `StellarSiteUri` is the one address all of it hangs off: the `$schema` of the files
-`stellar` creates, the sites of the modules, the installer.
+commits and the repositories it was made of): there it runs `scripts/orchestra-site.ps1`, which writes
+`docfx.orchestra.json`, and builds that instead of `docfx.json`.
+
+### The mirror regenerates itself
+
+`.github/workflows/mirror.yml` runs in the mirror (where the repository variable `STELLAR_MIRROR` is `true`) every
+night and on demand: it clones every component the last `.orchestra` names, at its default branch, makes a snapshot
+when anything changed, pushes it and starts the docs workflow. A component it cannot clone (a private repository) is
+kept as the mirror has it (`scripts/mirror.ps1 -Keep`); the secret `STELLAR_MIRROR_TOKEN` lets it read private ones
+too. The first snapshot comes from a machine: `scripts/mirror.ps1 -Push`.
 
 ## Independence
 

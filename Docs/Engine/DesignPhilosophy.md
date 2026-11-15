@@ -4,7 +4,7 @@
 > It explains *why* the project exists, *how decisions are made*,
 > and *what kind of system StellarEngine intentionally aims to be*.
 
-- [README.md](./../README.md)
+- [README.md](../../README.md)
 
 ---
 

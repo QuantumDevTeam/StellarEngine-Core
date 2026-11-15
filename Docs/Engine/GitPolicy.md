@@ -1,6 +1,6 @@
 # StellarEngine — Git & Collaboration Policy
 
-- [README.md](./../README.md)
+- [README.md](../../README.md)
 
 ## 1. Purpose of This Document
 
@@ -147,5 +147,5 @@ Each contributor:
 
 Also see:
 - [Versioning.md](Versioning.md)
-- [CONTRIBUTING.md](../CONTRIBUTING.md)
-- [README.md](./../README.md)
+- [CONTRIBUTING.md](../../CONTRIBUTING.md)
+- [README.md](../../README.md)

@@ -47,6 +47,11 @@ public static class StellarVersions
     public static string SiteUri => Get("StellarSiteUri");
 
     /// <summary>
+    /// Gets the address of the site of the whole engine: the orchestra, with every module, built from the mirror.
+    /// </summary>
+    public static string EngineSiteUri => Get("StellarEngineSiteUri");
+
+    /// <summary>
     /// Gets the address of the JSON schemas, ending with a slash: what the <c>$schema</c> of a descriptor or a
     /// project file points at, the same on every machine.
     /// </summary>

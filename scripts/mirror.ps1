@@ -37,6 +37,10 @@
 
 .PARAMETER IncludeHidden
     Also the components whose folder name starts with '_'.
+
+.PARAMETER Keep
+    Components to take as they are in the last snapshot of the mirror, folder and entry of .orchestra alike, for
+    those whose repository cannot be read here (a private one, in the mirror workflow without a token for it).
 #>
 param(
     [string]$Remote = 'https://github.com/QuantumDevTeam/StellarEngine-Mono.git',
@@ -44,7 +48,8 @@ param(
     [string]$Message = '',
     [string]$Tag = '',
     [switch]$Push,
-    [switch]$IncludeHidden
+    [switch]$IncludeHidden,
+    [string[]]$Keep = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -121,7 +126,9 @@ function New-Tree([string[]]$Entries) {
     [System.IO.File]::WriteAllText($file, (($Entries | ForEach-Object { "$_" }) -join "`n") + "`n",
         [System.Text.UTF8Encoding]::new($false))
     try {
-        $sha = & cmd /c "git --git-dir `"$mirror`" mktree < `"$file`""
+        # The shell's '<' passes the bytes as they are: cmd on Windows, sh elsewhere (the mirror workflow runs on Linux)
+        $sha = if ($env:OS -eq 'Windows_NT') { & cmd /c "git --git-dir `"$mirror`" mktree < `"$file`"" }
+               else { & sh -c 'git --git-dir "$1" mktree < "$2"' sh $mirror $file }
         if ($LASTEXITCODE -ne 0) { throw 'git mktree failed' }
     }
     finally { Remove-Item $file }
@@ -153,11 +160,32 @@ foreach ($component in $components) {
     $branch = "$(& git -C $component.Path rev-parse --abbrev-ref HEAD)".Trim()
     $subject = "$(& git -C $component.Path log -1 --format=%s HEAD)".Trim()
     $lines.Add(('- {0} {1} ({2}): {3}' -f $component.Name, $head.Substring(0, 10), $branch, $subject))
-    $marker.Add([ordered]@{ Name = $component.Name; Area = $component.Area; Commit = "$head".Trim(); Branch = $branch })
+    $repository = "$(Invoke-GitQuiet -C $component.Path remote get-url origin)".Trim()
+    # A URL may carry credentials (https://user:token@host/...): never into a file of a public repository
+    $repository = $repository -replace '^(https?://)[^@/]+@', '$1'
+    $marker.Add([ordered]@{ Name = $component.Name; Area = $component.Area; Commit = "$head".Trim(); Branch = $branch; Repository = $repository })
+}
+
+# Components kept as the last snapshot has them: the same folder, the same entry of .orchestra
+if ($Keep.Count -gt 0) {
+    if (-not $parent) { throw "-Keep needs a previous snapshot, and the mirror has none on $Branch" }
+    $previous = @((Invoke-Mirror show "${parent}:.orchestra" | Out-String | ConvertFrom-Json).Components)
+
+    foreach ($name in $Keep) {
+        if ($marker | Where-Object { $_.Name -eq $name }) { throw "$name is both here and in -Keep" }
+        $entry = $previous | Where-Object { $_.Name -eq $name } | Select-Object -First 1
+        if (-not $entry -or -not $entry.Area) { throw "$name is not a component of the last snapshot: it cannot be kept" }
+
+        $keptTree = "$(Invoke-Mirror rev-parse "${parent}:$($entry.Area)/$name")".Trim()
+        $areaEntries[$entry.Area] += "040000 tree $keptTree`t$name"
+        $marker.Add([ordered]@{ Name = $entry.Name; Area = $entry.Area; Commit = $entry.Commit; Branch = $entry.Branch; Repository = $entry.Repository })
+        $lines.Add(('- {0} {1}: kept from the last snapshot' -f $name, "$($entry.Commit)".Substring(0, 10)))
+    }
 }
 
 # .orchestra at the root: tells the tree is a mirror (the docs workflow builds the orchestra site then) and what it
 # is made of. Content only: no date, so an unchanged orchestra gives the same tree
+$marker = @($marker | Sort-Object { $_.Area }, { $_.Name })
 $markerFile = Join-Path $mirror 'snapshot.orchestra'
 [System.IO.File]::WriteAllText($markerFile, ([ordered]@{ Components = $marker } | ConvertTo-Json -Depth 4) + "`n",
     [System.Text.UTF8Encoding]::new($false))
@@ -178,6 +206,8 @@ $tree = New-Tree $rootEntries
 
 if ($parent -and (Invoke-Mirror rev-parse "$parent^{tree}") -eq $tree) {
     Write-Host 'Nothing changed since the last snapshot' -ForegroundColor Yellow
+    # A fresh .mirror has the remote branch only: the local one, which a push or a tag names, starts there
+    Invoke-Mirror update-ref "refs/heads/$Branch" $parent | Out-Null
 }
 else {
     if (-not $Message) { $Message = "[MIRROR] Orchestra snapshot $(Get-Date -Format 'yyyy-MM-dd HH:mm')" }

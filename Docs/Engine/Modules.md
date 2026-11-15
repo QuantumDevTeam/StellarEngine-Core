@@ -1,6 +1,6 @@
 # Modules
 
-- [README.md](./../../README.md)
+- [README.md](../../README.md)
 
 A module is a folder with a [`<Id>.stellar.module`](../Formats/ModuleDescriptor.md) file. Everything else follows from
 it: the installation finds it, the SDK builds it, the analyzers keep its architecture, the packages carry it. The rule
@@ -77,7 +77,7 @@ be pinned either way for the whole installation.
 The build of an application writes the modules it loads into its runtime configuration: every module it depends
 on, directly or not, every module after the ones it depends on. `Stellar.Runtime` loads them in that order, each module
 above the core into a load context of its own, starts their entry points level by level, then the application. See
-[Runtime](Runtime.md).
+[Runtime](../Architecture/Runtime.md).
 
 ## The native part
 
@@ -89,7 +89,7 @@ A native project of a module imports two shared files:
 ```
 
 It builds into `artifacts/bin/<project>/<configuration>/`, like every project of the installation, links the native
-core as it was built (it never rebuilds the engine), and exports `StellarModule_GetInfo` (see [Native core](NativeAbi.md)). The managed project of the module
+core as it was built (it never rebuilds the engine), and exports `StellarModule_GetInfo` (see [Native core](../Architecture/NativeAbi.md)). The managed project of the module
 then gets the DLL by itself.
 
 `StellarNativeLinkCore=false` makes a plain C ABI module, with the Kernel headers only.

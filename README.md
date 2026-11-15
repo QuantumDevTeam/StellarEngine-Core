@@ -4,7 +4,7 @@ Licensed under PolyForm Noncommercial 1.0.0. See [LICENSE.md](LICENSE.md) and [C
 
 <img alt="StellarEngine" height="256" src="Shared/Branding/stellar_1x1.svg" width="256"/>
 
-The core of [StellarEngine](Docs/Architecture.md), a hypermodular game engine: the contracts, the basic concepts and the
+The core of [StellarEngine](Docs/Engine/Architecture.md), a hypermodular game engine: the contracts, the basic concepts and the
 tooling every other part of the engine stands on.
 
 A checkout of this repository is the root of an installation (`$STELLAR_ROOT`): the core lies right there, and the
@@ -56,7 +56,7 @@ powershell -File scripts/build.ps1 -Configuration Release -Install
 
 The checkout becomes the installation: `modules/`, `packages/`, `manifests/`, `config/`, `projects/` and `tools/` are
 created next to the sources, and git ignores them. The installation is registered for the user (`~/.stellar`) and the
-`stellar` command is installed as a global dotnet tool. See [the layout](Docs/Architecture/Repository.md).
+`stellar` command is installed as a global dotnet tool. See [the layout](Docs/Engine/Repository.md).
 
 `powershell -File scripts/build.ps1 -Uninstall` undoes all of it, the build output included: the checkout is a plain
 checkout again, and modules, tools and games in their folders stay.
@@ -97,7 +97,7 @@ stellar modules build --tests --pack
 
 A module is a folder with a `.stellar.module` file under `modules/`, or anywhere with `stellar modules add`. Its
 project is nearly empty: the SDK takes its kind, version and dependencies from the descriptor, and everything it does by
-itself can be switched off or replaced. See [Modules](Docs/Architecture/Modules.md).
+itself can be switched off or replaced. See [Modules](Docs/Engine/Modules.md).
 
 ## Working on the whole orchestra
 
@@ -110,16 +110,16 @@ Every module and tool is a repository of its own, cloned into its folder of the 
 | `scripts/mirror.ps1` | Makes a snapshot of the committed state of every component as one commit of the mirror (StellarEngine-Mono), the core at the root and each component in its folder. `-Tag v0.8.0`, `-Push` |
 | `scripts/orchestra-site.ps1` | Generates the DocFX project of the orchestra site (`docfx.orchestra.json`): the core and every module in one site. The docs workflow runs it in the mirror |
 
-See [Components and the mirror](Docs/Architecture/Repository.md#components-and-the-mirror).
+See [Components and the mirror](Docs/Engine/Repository.md#components-and-the-mirror).
 
 ## Documentation
 
 Architecture:
 
-- [Philosophy](Docs/Architecture.md) and [design philosophy](Docs/DesignPhilosophy.md)
+- [Philosophy](Docs/Engine/Architecture.md) and [design philosophy](Docs/Engine/DesignPhilosophy.md)
 - [Overview](Docs/Architecture/Overview.md), [levels of the engine](Docs/Architecture/Core.md), [pipeline](Docs/Architecture/Pipeline.md)
-- [Layout of this repository and of an installation](Docs/Architecture/Repository.md)
-- [Modules: how they are found, built, referenced and checked](Docs/Architecture/Modules.md)
+- [Layout of this repository and of an installation](Docs/Engine/Repository.md)
+- [Modules: how they are found, built, referenced and checked](Docs/Engine/Modules.md)
 - [SDK: how projects are built](Docs/Architecture/Sdk.md)
 - [Runtime: how an application starts, runs its frames and stops](Docs/Architecture/Runtime.md)
 - [Tools: the resource pipeline and how to extend it](Docs/Architecture/Tools.md)
@@ -139,5 +139,5 @@ Reference:
 
 Workflow:
 
-- [Contributing](CONTRIBUTING.md), [Git policy](Docs/GitPolicy.md), [versioning](Docs/Versioning.md)
+- [Contributing](CONTRIBUTING.md), [Git policy](Docs/Engine/GitPolicy.md), [versioning](Docs/Engine/Versioning.md)
 - [Migrating modules to 0.8](Docs/Migration-0.8.md)
