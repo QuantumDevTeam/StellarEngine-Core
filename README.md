@@ -42,7 +42,11 @@ powershell -File scripts/build.ps1 -Configuration Release -Install
 ```
 
 The checkout becomes the installation: `modules/`, `packages/`, `manifests/`, `config/`, `projects/` and `tools/` are
-created next to the sources, and git ignores them. See [the layout](Docs/Architecture/Repository.md).
+created next to the sources, and git ignores them. The installation is registered for the user (`~/.stellar`) and the
+`stellar` command is installed as a global dotnet tool. See [the layout](Docs/Architecture/Repository.md).
+
+`powershell -File scripts/build.ps1 -Uninstall` undoes all of it, the build output included: the checkout is a plain
+checkout again, and modules, tools and games in their folders stay.
 
 ## Building
 
@@ -74,13 +78,25 @@ once per wrapper. Nothing outside the sandbox is touched.
 ## Modules
 
 ```bash
-dotnet stellar modules new Managed Stellar.Logging --level CoreModule
-dotnet stellar modules build --tests --pack
+stellar modules new Managed Stellar.Logging --level CoreModule
+stellar modules build --tests --pack
 ```
 
 A module is a folder with a `.stellar.module` file under `modules/`, or anywhere with `stellar modules add`. Its
 project is nearly empty: the SDK takes its kind, version and dependencies from the descriptor, and everything it does by
 itself can be switched off or replaced. See [Modules](Docs/Architecture/Modules.md).
+
+## Working on the whole orchestra
+
+Every module and tool is a repository of its own, cloned into its folder of the installation (`modules/<Module>/`,
+`tools/<Tool>/`); the core ignores those folders. Two scripts tie them together on the machine:
+
+| Script | What it does |
+|---|---|
+| `scripts/solution.ps1` | Writes `StellarEngine.sln`: the core and every project of `modules/` and `tools/`, for the IDE. Ignored by git; run it again when a module or a project appears |
+| `scripts/mirror.ps1` | Makes a snapshot of the committed state of every component as one commit of the mirror (StellarEngine-Mono), the core at the root and each component in its folder. `-Tag v0.8.0`, `-Push` |
+
+See [Components and the mirror](Docs/Architecture/Repository.md#components-and-the-mirror).
 
 ## Documentation
 

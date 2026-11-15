@@ -9,11 +9,11 @@ of the whole engine applies: everything that can be automatic is, and everything
 ## The life of a module
 
 ```bash
-dotnet stellar modules new Managed Stellar.Logging --level CoreModule -d "Logging for the engine"
-dotnet stellar modules new Native Stellar.Graphic --level HighLevel
+stellar modules new Managed Stellar.Logging --level CoreModule -d "Logging for the engine"
+stellar modules new Native Stellar.Graphic --level HighLevel
 # Stellar.Graphic.stellar.module: "Dependencies": ["Stellar.Logging"]
-dotnet stellar modules sync
-dotnet stellar modules build --tests --pack
+stellar modules sync
+stellar modules build --tests --pack
 ```
 
 | Step | What happens |
@@ -29,7 +29,7 @@ dotnet stellar modules build --tests --pack
 A module developed in its own repository stays there:
 
 ```bash
-dotnet stellar modules add F:/project/CS/Stellar.Logging
+stellar modules add F:/project/CS/Stellar.Logging
 ```
 
 It is then part of the installation exactly like a folder of `modules/`, and gets a `NuGet.config` pointing at the

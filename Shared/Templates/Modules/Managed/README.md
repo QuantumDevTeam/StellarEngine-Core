@@ -20,8 +20,8 @@
 ## Working on it
 
 ```bash
-dotnet stellar modules build {{ModuleId}} --tests
+stellar modules build {{ModuleId}} --tests
 ```
 
-A dependency on another module goes into `Dependencies` of the descriptor, then `dotnet stellar modules sync`: the
+A dependency on another module goes into `Dependencies` of the descriptor, then `stellar modules sync`: the
 project gets the reference by itself.

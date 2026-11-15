@@ -131,6 +131,31 @@ The modules live under the root, but nothing of the core leaks into them:
   `modules/` and `projects/`, so MSBuild and NuGet stop there before reaching the files of the core;
 - a module knows the core through `Stellar.Sdk` and the packages only, never through a relative path.
 
+## Components and the mirror
+
+Every component of the orchestra is a repository of its own, and on the machine they are nested in one folder:
+
+```
+<root>/                     StellarEngine-Core: the only component installed into the root
+<root>/modules/<Module>/    one repository per module
+<root>/tools/<Tool>/        one repository per tool, e.g. tools/StellarEditor
+```
+
+The core ignores `modules/` and `tools/`, so each folder commits and pushes to its own repository only; an IDE shows
+them as separate git roots. A new module starts as `stellar modules new`, then `git init` and `git remote add origin`
+in its folder.
+
+`scripts/solution.ps1` writes `StellarEngine.sln`, the solution of the whole installation: `StellarEngine-Core.sln` plus
+a solution folder per component with all its `.csproj` and `.vcxproj`. GUIDs are derived from paths (a native project
+keeps its own `ProjectGuid`), so the same tree gives the same file. Folders starting with `_`, such as
+`modules/_legacy`, are left out unless `-IncludeHidden`. The file is generated, so git ignores it.
+
+StellarEngine-Mono is a mirror, never worked in. `scripts/mirror.ps1` takes the committed `HEAD` of the core and of
+every component repository and makes one commit of the mirror from them, on top of its own history; the message names
+the commit of each component. It works in its own bare repository, `<root>/.mirror` (ignored), with git plumbing only:
+the working folders are not touched, and uncommitted changes are not in a snapshot (it warns). Without `-Push` the
+snapshot stays local and the script prints the push command; `-Tag` marks a release of the orchestra.
+
 ## Independence
 
 The core must build from a clean clone with nothing else present. That is why:

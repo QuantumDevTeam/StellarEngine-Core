@@ -30,14 +30,16 @@
 
 .PARAMETER Install
     Also runs 'stellar install' here: modules/, manifests/, config/ and the rest of an installation. Implies -Pack.
+    Registers the installation for the current user and installs the 'stellar' command (a global dotnet tool).
 
 .PARAMETER NoUserRegistration
-    With -Install: do not register this installation for the current user ($STELLAR_HOME or ~/.stellar).
+    With -Install: do not register this installation for the current user ($STELLAR_HOME or ~/.stellar), and do
+    not install the 'stellar' command. For sandboxes.
 
 .PARAMETER Uninstall
     Undoes -Install and the build instead of building: 'stellar uninstall' here (the registration of the user, the
-    packages of this installation in the NuGet cache, what the installer created), then artifacts/. Modules, tools
-    and games in their folders are never touched.
+    packages of this installation in the NuGet cache, what the installer created), the 'stellar' command, then
+    artifacts/. Modules, tools and games in their folders are never touched.
 
 .PARAMETER All
     With -Uninstall: also the files you may have edited (config/, the isolation files, the engine manifest).
@@ -83,6 +85,40 @@ function Find-MSBuild {
     return $msbuild
 }
 
+# The 'stellar' command: Stellar.Cli as a global dotnet tool ($DOTNET_CLI_HOME moves it, for sandboxes)
+function Test-StellarTool {
+    return [bool](dotnet tool list -g | Select-String -Pattern '^stellar\.cli\s' -Quiet)
+}
+
+function Uninstall-StellarTool {
+    if (Test-StellarTool) {
+        Invoke-Step "Uninstall the 'stellar' command" { dotnet tool uninstall -g Stellar.Cli }
+    }
+}
+
+function Install-StellarTool {
+    $package = Get-ChildItem (Join-Path $root 'packages') -Filter 'Stellar.Cli.*.nupkg' |
+        Sort-Object LastWriteTime | Select-Object -Last 1
+    if (-not $package) { throw 'No Stellar.Cli package in packages/' }
+    $version = $package.BaseName.Substring('Stellar.Cli.'.Length)
+
+    Uninstall-StellarTool
+
+    # A package of the same version left in the NuGet cache would win over the one just packed
+    $cache = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $HOME '.nuget/packages' }
+    $cached = Join-Path $cache "stellar.cli/$($version.ToLowerInvariant())"
+    if (Test-Path $cached) { [System.IO.Directory]::Delete($cached, $true) }
+
+    # From the root, so the NuGet.config of the checkout maps Stellar.* to packages/
+    Push-Location $root
+    try {
+        Invoke-Step "Install the 'stellar' command ($version)" {
+            dotnet tool install -g Stellar.Cli --version $version --add-source (Join-Path $root 'packages')
+        }
+    }
+    finally { Pop-Location }
+}
+
 if ($Uninstall) {
     if ($Install -or $Pack) { throw '-Uninstall cannot be combined with -Install or -Pack' }
 
@@ -93,6 +129,8 @@ if ($Uninstall) {
     Invoke-Step 'Uninstall' {
         dotnet run --project (Join-Path $root 'SDK/src/Stellar.Cli/Stellar.Cli.csproj') -c $Configuration -v quiet -- @arguments
     }
+
+    Uninstall-StellarTool
 
     $artifacts = Join-Path $root 'artifacts'
     if (-not $KeepArtifacts -and (Test-Path $artifacts)) {
@@ -171,6 +209,9 @@ if ($Install) {
     Invoke-Step 'Install' {
         dotnet run --project (Join-Path $root 'SDK/src/Stellar.Cli/Stellar.Cli.csproj') -c $Configuration --no-build -- @arguments
     }
+
+    # Registration and the command go together: both belong to the user, not to the checkout
+    if (-not $NoUserRegistration) { Install-StellarTool }
 }
 
 Write-Host "StellarEngine-Core built ($Configuration, wrappers: $($wrappers -join ', '), packed with: $Wrapper) in $root" -ForegroundColor Green

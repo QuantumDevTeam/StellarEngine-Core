@@ -56,10 +56,10 @@ An entry with no folder, discovered or by `Path`, declares a module that exists 
 The commands edit the entries for you, and leave the manifest as it was when the result would be inconsistent:
 
 ```bash
-dotnet stellar modules add F:/project/CS/Stellar.Logging     # Path, and a NuGet.config in the folder if it has none
-dotnet stellar modules disable Stellar.Physics               # Enabled = false
-dotnet stellar modules enable Stellar.Physics
-dotnet stellar modules reset Stellar.Physics                 # removes the entry
+stellar modules add F:/project/CS/Stellar.Logging     # Path, and a NuGet.config in the folder if it has none
+stellar modules disable Stellar.Physics               # Enabled = false
+stellar modules enable Stellar.Physics
+stellar modules reset Stellar.Physics                 # removes the entry
 ```
 
 ## What is generated

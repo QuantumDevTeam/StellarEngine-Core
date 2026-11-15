@@ -14,6 +14,8 @@
 /StellarEngine.sln
 /StellarEngine.slnf
 /StellarEngine.*.slnf
+# The bare repository scripts/mirror.ps1 builds the snapshots of the orchestra in
+/.mirror/
 
 # ---- Build output ----
 [Bb]in/
