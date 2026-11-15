@@ -44,9 +44,30 @@ The installation is found in this order:
 1. the `StellarRoot` MSBuild property: `modules/` and `projects/` set it for everything inside them;
 2. the `STELLAR_ROOT` environment variable;
 3. a directory above the project that contains `manifests/engine.manifest.json`;
-4. the per-user pointer `~/.stellar/<version>/installation_location.txt`, written by `stellar install`.
+4. the registry of the user: the installation of this orchestra version.
 
-So a module or a game inside the installation needs nothing, and one elsewhere uses `STELLAR_ROOT` or the pointer.
+So a module or a game inside the installation needs nothing, and one elsewhere uses `STELLAR_ROOT` or the registry.
+
+### The registry of the user
+
+`~/.stellar` (or `$STELLAR_HOME`) is the only place that knows where an orchestra lies on the machine:
+
+```
+~/.stellar/
+├── installations.json   orchestra version -> root, one installation per version (stellar install / uninstall)
+└── installations.props  generated from it for Stellar.Sdk: MSBuild cannot read JSON at evaluation time
+```
+
+What an orchestra holds stays in its own `manifests/`. `stellar install` registers the installation, registering a
+version again moves it; `stellar install --no-user-registration` leaves the registry alone.
+
+### Uninstalling
+
+`stellar uninstall` (or `scripts/build.ps1 -Uninstall`, which also removes `artifacts/`) turns an installation back
+into a plain checkout of the core: it unregisters it, removes the packages of its `packages/` from the NuGet cache
+(a package left there would shadow a rebuilt one of the same version), and removes what the installer made. Files
+made from a template are removed only while unchanged (`--all` removes them anyway), folders only once empty: modules,
+tools and games in their folders are never touched, and links are removed as links. `--dry-run` only tells.
 
 ## Build output
 

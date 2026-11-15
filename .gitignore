@@ -9,6 +9,11 @@
 /config/
 /artifacts/
 /Docs/Modules/
+# The modules and tools above are repositories of their own. The solution of the whole installation (core, modules
+# and tools together) is generated on the machine; the core has StellarEngine-Core.sln.
+/StellarEngine.sln
+/StellarEngine.slnf
+/StellarEngine.*.slnf
 
 # ---- Build output ----
 [Bb]in/

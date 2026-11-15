@@ -24,7 +24,8 @@ The project wins over `config/`, `config/` over the defaults.
 
 | Property | Default | Meaning |
 |---|---|---|
-| `StellarRoot` | `STELLAR_ROOT`, a `manifests/` above, the user pointer | The root of the installation |
+| `StellarRoot` | `STELLAR_ROOT`, a `manifests/` above, the user registry | The root of the installation |
+| `StellarHome` | `STELLAR_HOME`, or `~/.stellar` | The registry of the user, read only when nothing else gave `StellarRoot` |
 | `StellarPackagesDir` | `$(StellarRoot)packages/` | The local feed |
 | `StellarArtifactsDir` | `$(StellarRoot)artifacts/` | Everything built: `bin/` and `obj/`, see [the layout](../Architecture/Repository.md) |
 | `StellarUseArtifactsOutput` | `true` | `false`: the plain `bin/` and `obj/` next to the project |

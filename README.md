@@ -58,7 +58,10 @@ powershell -File scripts/build.ps1
 | `-SkipTests` | Does not run the tests |
 | `-Pack` | Also fills the local feed, `packages/` |
 | `-Install` | Also runs `stellar install` here; implies `-Pack` |
-| `-NoUserRegistration` | With `-Install`: do not write the per-user pointer `~/.stellar` |
+| `-NoUserRegistration` | With `-Install`: do not register the installation for the current user (`~/.stellar`) |
+| `-Uninstall` | Instead of building: `stellar uninstall` here, then `artifacts/`. Modules, tools and games stay |
+| `-All` | With `-Uninstall`: also the files you may have edited (`config/`, isolation files, the manifest) |
+| `-KeepArtifacts` | With `-Uninstall`: keep the build output |
 
 `StellarEngine-Core.sln` opens everything in Visual Studio or Rider. `dotnet` cannot build C++ projects, so from the
 command line use `StellarEngine-Core.Managed.slnf` for the managed part. The managed tests run once per wrapper of the

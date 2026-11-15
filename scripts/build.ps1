@@ -32,7 +32,18 @@
     Also runs 'stellar install' here: modules/, manifests/, config/ and the rest of an installation. Implies -Pack.
 
 .PARAMETER NoUserRegistration
-    With -Install: do not make this the installation of the current user (~/.stellar).
+    With -Install: do not register this installation for the current user ($STELLAR_HOME or ~/.stellar).
+
+.PARAMETER Uninstall
+    Undoes -Install and the build instead of building: 'stellar uninstall' here (the registration of the user, the
+    packages of this installation in the NuGet cache, what the installer created), then artifacts/. Modules, tools
+    and games in their folders are never touched.
+
+.PARAMETER All
+    With -Uninstall: also the files you may have edited (config/, the isolation files, the engine manifest).
+
+.PARAMETER KeepArtifacts
+    With -Uninstall: keep the build output, artifacts/.
 #>
 param(
     [ValidateSet('Debug', 'Release')]
@@ -43,7 +54,10 @@ param(
     [switch]$SkipTests,
     [switch]$Pack,
     [switch]$Install,
-    [switch]$NoUserRegistration
+    [switch]$NoUserRegistration,
+    [switch]$Uninstall,
+    [switch]$All,
+    [switch]$KeepArtifacts
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,11 +83,35 @@ function Find-MSBuild {
     return $msbuild
 }
 
+if ($Uninstall) {
+    if ($Install -or $Pack) { throw '-Uninstall cannot be combined with -Install or -Pack' }
+
+    $arguments = @('uninstall', $root)
+    if ($All) { $arguments += '--all' }
+
+    # Built if needed; it runs from artifacts/, so artifacts/ goes only after it exits
+    Invoke-Step 'Uninstall' {
+        dotnet run --project (Join-Path $root 'SDK/src/Stellar.Cli/Stellar.Cli.csproj') -c $Configuration -v quiet -- @arguments
+    }
+
+    $artifacts = Join-Path $root 'artifacts'
+    if (-not $KeepArtifacts -and (Test-Path $artifacts)) {
+        dotnet build-server shutdown | Out-Null
+        # Not Remove-Item -Recurse: Windows PowerShell walks into junctions; Directory.Delete removes them as links
+        [System.IO.Directory]::Delete($artifacts, $true)
+        Write-Host "Removed $artifacts"
+    }
+
+    Write-Host "StellarEngine-Core uninstalled from ${root}: a plain checkout again" -ForegroundColor Green
+    return
+}
+
 if ($Install) { $Pack = $true }
 
 # C++/CLI exists on Windows only, and needs the C++ toolchain
 $canBuildCli = -not $SkipNative -and $IsWindows -ne $false
-$wrappers = if ($canBuildCli) { @('Cli', 'Managed') } else { @('Managed') }
+# @(): a one-element array out of an if would be unrolled into a string
+$wrappers = @(if ($canBuildCli) { 'Cli', 'Managed' } else { 'Managed' })
 
 if (-not $Wrapper) { $Wrapper = $wrappers[0] }
 if ($wrappers -notcontains $Wrapper) { throw "The $Wrapper wrapper cannot be built here: use -Wrapper Managed" }
