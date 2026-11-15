@@ -41,6 +41,17 @@ public static class StellarVersions
     /// <summary>Gets the version of the native C ABI.</summary>
     public static string NativeAbi => Get("StellarNativeAbiVersion");
 
+    /// <summary>
+    /// Gets the address the core is published at: the docs site, with the installer at its root.
+    /// </summary>
+    public static string SiteUri => Get("StellarSiteUri");
+
+    /// <summary>
+    /// Gets the address of the JSON schemas, ending with a slash: what the <c>$schema</c> of a descriptor or a
+    /// project file points at, the same on every machine.
+    /// </summary>
+    public static string SchemasUri => Get("StellarSchemasUri");
+
     private static string Get(string key)
     {
         return Metadata.TryGetValue(key, out var value)

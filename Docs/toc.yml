@@ -1,6 +1,8 @@
 # Navigation of the generated documentation site (DocFX). Paths are relative to this file.
 - name: Home
   href: index.md
+- name: Install
+  href: Install.md
 - name: Overview
   items:
     - name: README
@@ -59,3 +61,5 @@
       href: ../LICENSE.md
     - name: CLA
       href: ../CLA.md
+- name: API
+  href: ../artifacts/docs/api/

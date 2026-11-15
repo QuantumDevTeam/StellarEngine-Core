@@ -2,7 +2,7 @@
 
 Licensed under PolyForm Noncommercial 1.0.0. See [LICENSE.md](LICENSE.md) and [CLA.md](CLA.md).
 
-<img alt="Logo" height="256" src="Shared/Branding/Logo.png" width="256"/>
+<img alt="StellarEngine" height="256" src="Shared/Branding/stellar_1x1.svg" width="256"/>
 
 The core of [StellarEngine](Docs/Architecture.md), a hypermodular game engine: the contracts, the basic concepts and the
 tooling every other part of the engine stands on.
@@ -108,6 +108,7 @@ Every module and tool is a repository of its own, cloned into its folder of the 
 |---|---|
 | `scripts/solution.ps1` | Writes `StellarEngine.sln`: the core and every project of `modules/` and `tools/`, for the IDE. Ignored by git; run it again when a module or a project appears |
 | `scripts/mirror.ps1` | Makes a snapshot of the committed state of every component as one commit of the mirror (StellarEngine-Mono), the core at the root and each component in its folder. `-Tag v0.8.0`, `-Push` |
+| `scripts/orchestra-site.ps1` | Generates the DocFX project of the orchestra site (`docfx.orchestra.json`): the core and every module in one site. The docs workflow runs it in the mirror |
 
 See [Components and the mirror](Docs/Architecture/Repository.md#components-and-the-mirror).
 

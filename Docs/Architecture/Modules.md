@@ -18,7 +18,7 @@ stellar modules build --tests --pack
 
 | Step | What happens |
 |---|---|
-| `modules new` | Renders `Shared/Templates/Modules/<template>` into `modules/<Id>/`, and syncs |
+| `modules new` | Renders `Shared/Templates/Modules/<template>` into `modules/<Id>/`, with its documentation site (`Docs/`, `docfx.json`, a Pages workflow, a placeholder icon in `Branding/`), and syncs |
 | `modules sync` | Finds the modules, applies the manifest, checks the rules, writes the catalog |
 | `modules build` | For each module in load order, with the dependencies of the selected ones: native projects (MSBuild of Visual Studio), the managed project, the tests, the package |
 | `modules list` | The modules in load order, where each came from, how it is linked |

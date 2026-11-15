@@ -156,6 +156,21 @@ the commit of each component. It works in its own bare repository, `<root>/.mirr
 the working folders are not touched, and uncommitted changes are not in a snapshot (it warns). Without `-Push` the
 snapshot stays local and the script prints the push command; `-Tag` marks a release of the orchestra.
 
+### Sites
+
+Every repository publishes its documentation with DocFX to GitHub Pages, by the same `.github/workflows/docs.yml`:
+
+| Repository | Site | Content |
+|---|---|---|
+| StellarEngine-Core | `StellarSiteUri` of `Shared/Build/Stellar.Versions.props` | `Docs/`, the API reference of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`, the JSON schemas (`/schemas/`), the installer (`/install.ps1`) |
+| a module | the same host, `/<Module>/` | its `Docs/` and README; `stellar modules new` creates them with `docfx.json` and the workflow |
+| the mirror | its own Pages | the orchestra: the core under `/core/`, each component under `/modules/<Module>/` or `/tools/<Tool>/`, the installer and the schemas |
+
+The workflow tells the mirror by the `.orchestra` file `scripts/mirror.ps1` puts at the root of each snapshot (the
+commits it was made of): there it runs `scripts/orchestra-site.ps1`, which writes `docfx.orchestra.json`, and builds
+that instead of `docfx.json`. `StellarSiteUri` is the one address all of it hangs off: the `$schema` of the files
+`stellar` creates, the sites of the modules, the installer.
+
 ## Independence
 
 The core must build from a clean clone with nothing else present. That is why:

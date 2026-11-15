@@ -1,9 +1,21 @@
-# StellarEngine Documentation
+<p align="center"><img src="../Shared/Branding/stellar_1x1.svg" alt="StellarEngine" width="180"/></p>
 
-This is the landing page of the generated documentation site. The pages are built from the Markdown files of the
-repository; the same files can be read directly in the `Docs/` folder.
+# StellarEngine
+
+A hypermodular game engine built from the bottom up: a C++ native core, a managed core over it, and everything else as
+modules, each in a repository of its own.
+
+```powershell
+irm https://quantumdevteam.github.io/StellarEngine-Core/install.ps1 | iex
+```
+
+See [Installing](Install.md) for what it needs and what it does. The pages here are the Markdown files of the
+repository, so the same text is in the `Docs/` folder; the [API reference](xref:Stellar.Kernel) is generated from
+the code of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`.
 
 ## Start here
+
+- [Installing](Install.md)
 
 - [README](../README.md)
 - [Architecture](Architecture.md)
@@ -41,3 +53,7 @@ repository; the same files can be read directly in the `Docs/` folder.
 - [Migrating to 0.8](Migration-0.8.md)
 - [License](../LICENSE.md)
 - [CLA](../CLA.md)
+
+---
+
+<img src="../Shared/Branding/logo_clean.svg" alt="QuantumDevTeam" width="32"/> StellarEngine is made by QuantumDevTeam.

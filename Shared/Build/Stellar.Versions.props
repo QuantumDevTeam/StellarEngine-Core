@@ -22,4 +22,13 @@
         <!-- Native C ABI version: bump on every incompatible change of the exported surface -->
         <StellarNativeAbiVersion>2</StellarNativeAbiVersion>
     </PropertyGroup>
+
+    <!--
+        Where the core is published. One place: the docs site, the JSON schemas that files of modules and projects
+        point at ($schema), and the installer all hang off this address. A file never names a path of a machine.
+    -->
+    <PropertyGroup>
+        <StellarSiteUri>https://quantumdevteam.github.io/StellarEngine-Core/</StellarSiteUri>
+        <StellarSchemasUri>$(StellarSiteUri)schemas/</StellarSchemasUri>
+    </PropertyGroup>
 </Project>

@@ -61,6 +61,15 @@ function Invoke-Git {
 
 function Invoke-Mirror { Invoke-Git --git-dir $mirror @args }
 
+# A git call allowed to fail (a branch that does not exist yet): its exit code says so, its stderr is not an error.
+# Windows PowerShell turns the stderr of a native command into an error record under -ErrorAction Stop
+function Invoke-GitQuiet {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { & git @args 2>$null }
+    finally { $ErrorActionPreference = $previous }
+}
+
 # ---- The components ----
 $components = [System.Collections.Generic.List[object]]::new()
 $components.Add(@{ Name = 'StellarEngine-Core'; Area = ''; Path = $root })
@@ -70,6 +79,8 @@ foreach ($area in 'modules', 'tools') {
 
     Get-ChildItem $directory -Directory | Sort-Object Name | ForEach-Object {
         if (-not $IncludeHidden -and $_.Name.StartsWith('_')) { return }
+        # tools/compilers belongs to the installer (resource compilers of this installation), not to a component
+        if ($area -eq 'tools' -and $_.Name -eq 'compilers') { return }
         if (-not (Test-Path (Join-Path $_.FullName '.git'))) {
             Write-Warning "$area/$($_.Name) is not a repository: left out"
             return
@@ -88,14 +99,14 @@ elseif ((Invoke-Mirror remote get-url origin) -ne $Remote) {
 }
 
 # The history of the mirror, if it has one yet
-& git --git-dir $mirror fetch --quiet --no-tags origin "+refs/heads/${Branch}:refs/remotes/origin/$Branch" 2>$null
-$parent = & git --git-dir $mirror rev-parse --verify --quiet "refs/remotes/origin/$Branch" 2>$null
-$local = & git --git-dir $mirror rev-parse --verify --quiet "refs/heads/$Branch" 2>$null
+Invoke-GitQuiet --git-dir $mirror fetch --quiet --no-tags origin "+refs/heads/${Branch}:refs/remotes/origin/$Branch" | Out-Null
+$parent = Invoke-GitQuiet --git-dir $mirror rev-parse --verify --quiet "refs/remotes/origin/$Branch"
+$local = Invoke-GitQuiet --git-dir $mirror rev-parse --verify --quiet "refs/heads/$Branch"
 if ($local -and $local -ne $parent) {
     # A snapshot made before and not pushed yet: build on it, unless the remote has gone past it already
     $behind = $false
     if ($parent) {
-        & git --git-dir $mirror merge-base --is-ancestor $local $parent 2>$null
+        Invoke-GitQuiet --git-dir $mirror merge-base --is-ancestor $local $parent | Out-Null
         $behind = $LASTEXITCODE -eq 0
     }
     if (-not $behind) { $parent = $local }
@@ -120,9 +131,10 @@ function New-Tree([string[]]$Entries) {
 $rootEntries = @()
 $areaEntries = [ordered]@{ modules = @(); tools = @() }
 $lines = [System.Collections.Generic.List[string]]::new()
+$marker = [System.Collections.Generic.List[object]]::new()
 
 foreach ($component in $components) {
-    $head = & git -C $component.Path rev-parse --verify --quiet HEAD 2>$null
+    $head = Invoke-GitQuiet -C $component.Path rev-parse --verify --quiet HEAD
     if (-not $head) {
         Write-Warning "$($component.Name) has no commits yet: left out"
         continue
@@ -141,7 +153,18 @@ foreach ($component in $components) {
     $branch = "$(& git -C $component.Path rev-parse --abbrev-ref HEAD)".Trim()
     $subject = "$(& git -C $component.Path log -1 --format=%s HEAD)".Trim()
     $lines.Add(('- {0} {1} ({2}): {3}' -f $component.Name, $head.Substring(0, 10), $branch, $subject))
+    $marker.Add([ordered]@{ Name = $component.Name; Area = $component.Area; Commit = "$head".Trim(); Branch = $branch })
 }
+
+# .orchestra at the root: tells the tree is a mirror (the docs workflow builds the orchestra site then) and what it
+# is made of. Content only: no date, so an unchanged orchestra gives the same tree
+$markerFile = Join-Path $mirror 'snapshot.orchestra'
+[System.IO.File]::WriteAllText($markerFile, ([ordered]@{ Components = $marker } | ConvertTo-Json -Depth 4) + "`n",
+    [System.Text.UTF8Encoding]::new($false))
+try { $markerBlob = "$(Invoke-Mirror hash-object -w --no-filters $markerFile)".Trim() }
+finally { Remove-Item $markerFile }
+if ($rootEntries | Where-Object { "$_".EndsWith("`t.orchestra") }) { throw 'The core itself has a .orchestra file: it belongs to the mirror' }
+$rootEntries += "100644 blob $markerBlob`t.orchestra"
 
 foreach ($area in $areaEntries.Keys) {
     if ($areaEntries[$area].Count -eq 0) { continue }
@@ -183,7 +206,8 @@ $refs = @("refs/heads/${Branch}:refs/heads/$Branch")
 if ($Tag) { $refs += "refs/tags/${Tag}:refs/tags/$Tag" }
 
 if ($Push) {
-    Invoke-Mirror push origin @refs
+    # --quiet: the progress of a push goes to stderr, which Windows PowerShell would take for an error
+    Invoke-Mirror push --quiet origin @refs
     Write-Host "Pushed to $Remote" -ForegroundColor Green
 }
 else {
