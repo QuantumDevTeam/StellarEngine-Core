@@ -33,6 +33,11 @@
     object-fit: contain;
 }
 
+/* Entries of the menu stay on one line */
+.navbar-nav .nav-link {
+    white-space: nowrap;
+}
+
 /* A thin line under the header instead of a block */
 header .navbar {
     border-bottom: 1px solid var(--bs-border-color-translucent);

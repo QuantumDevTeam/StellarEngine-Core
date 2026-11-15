@@ -163,7 +163,8 @@ foreach ($component in $components) {
     $repository = "$(Invoke-GitQuiet -C $component.Path remote get-url origin)".Trim()
     # A URL may carry credentials (https://user:token@host/...): never into a file of a public repository
     $repository = $repository -replace '^(https?://)[^@/]+@', '$1'
-    $marker.Add([ordered]@{ Name = $component.Name; Area = $component.Area; Commit = "$head".Trim(); Branch = $branch; Repository = $repository })
+    # No branch: a machine snapshots what it has checked out, the workflow the default branch; the commit is the fact
+    $marker.Add([ordered]@{ Name = $component.Name; Area = $component.Area; Commit = "$head".Trim(); Repository = $repository })
 }
 
 # Components kept as the last snapshot has them: the same folder, the same entry of .orchestra
@@ -178,7 +179,7 @@ if ($Keep.Count -gt 0) {
 
         $keptTree = "$(Invoke-Mirror rev-parse "${parent}:$($entry.Area)/$name")".Trim()
         $areaEntries[$entry.Area] += "040000 tree $keptTree`t$name"
-        $marker.Add([ordered]@{ Name = $entry.Name; Area = $entry.Area; Commit = $entry.Commit; Branch = $entry.Branch; Repository = $entry.Repository })
+        $marker.Add([ordered]@{ Name = $entry.Name; Area = $entry.Area; Commit = $entry.Commit; Repository = $entry.Repository })
         $lines.Add(('- {0} {1}: kept from the last snapshot' -f $name, "$($entry.Commit)".Substring(0, 10)))
     }
 }
@@ -186,9 +187,19 @@ if ($Keep.Count -gt 0) {
 # .orchestra at the root: tells the tree is a mirror (the docs workflow builds the orchestra site then) and what it
 # is made of. Content only: no date, so an unchanged orchestra gives the same tree
 $marker = @($marker | Sort-Object { $_.Area }, { $_.Name })
+# Written by hand, not with ConvertTo-Json: Windows PowerShell and PowerShell 7 format it differently, and the same
+# orchestra snapshotted on a machine and in the workflow must give the same bytes
+function ConvertTo-JsonString([string]$Value) {
+    return '"' + ($Value -replace '\\', '\\' -replace '"', '\"') + '"'
+}
+$markerLines = foreach ($entry in $marker) {
+    '    { ' + (@('Name', 'Area', 'Commit', 'Repository' | ForEach-Object {
+                (ConvertTo-JsonString $_) + ': ' + (ConvertTo-JsonString "$($entry[$_])")
+            }) -join ', ') + ' }'
+}
+$markerJson = "{`n  `"Components`": [`n" + ($markerLines -join ",`n") + "`n  ]`n}`n"
 $markerFile = Join-Path $mirror 'snapshot.orchestra'
-[System.IO.File]::WriteAllText($markerFile, ([ordered]@{ Components = $marker } | ConvertTo-Json -Depth 4) + "`n",
-    [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($markerFile, $markerJson, [System.Text.UTF8Encoding]::new($false))
 try { $markerBlob = "$(Invoke-Mirror hash-object -w --no-filters $markerFile)".Trim() }
 finally { Remove-Item $markerFile }
 if ($rootEntries | Where-Object { "$_".EndsWith("`t.orchestra") }) { throw 'The core itself has a .orchestra file: it belongs to the mirror' }
