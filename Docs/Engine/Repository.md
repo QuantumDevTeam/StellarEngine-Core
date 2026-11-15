@@ -200,9 +200,8 @@ kept as the mirror has it (`scripts/mirror.ps1 -Keep`); the secret `STELLAR_MIRR
 too. The first snapshot comes from a machine: `scripts/mirror.ps1 -Push`.
 
 After that the workflow is the only writer of the mirror: on a machine, `scripts/mirror.ps1` without `-Push` shows
-what the next snapshot would be, and Run workflow publishes it. Two writers race: a snapshot made while the other one
-pushes lands on an old history and is refused; the workflow then reads the mirror again and retries, up to three
-times.
+what the next snapshot would be, and Run workflow publishes it. A snapshot is always made on top of the last one of
+the mirror; one that cannot read the mirror stops instead of starting a history of its own.
 
 ## Independence
 

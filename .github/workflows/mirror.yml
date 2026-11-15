@@ -106,22 +106,12 @@ jobs:
             '<StellarOrchesterVersion>([^<]+)</StellarOrchesterVersion>').Groups[1].Value
           $tag = "v$version"
           $release = -not (git ls-remote --tags origin "refs/tags/$tag")
-          $tagArguments = if ($release) { @('-Tag', $tag) } else { @() }
 
-          # The mirror may move while the snapshot is made (a push from a machine, a ref GitHub has not caught up with
-          # yet): a rejected push reads the mirror again and makes the snapshot again, on top of what is there now
-          for ($attempt = 1; ; $attempt++) {
-            try {
-              & "$workspace/scripts/mirror.ps1" -Remote 'https://github.com/${{ github.repository }}.git' -Push -Keep $keep @tagArguments
-              break
-            }
-            catch {
-              if ($attempt -ge 3) { throw }
-              Write-Host "::warning::Snapshot attempt $attempt failed ($($_.Exception.Message)): reading the mirror again"
-              Remove-Item "$workspace/.mirror" -Recurse -Force -ErrorAction SilentlyContinue
-              Start-Sleep -Seconds (15 * $attempt)
-            }
-          }
+          # Parameters by name (a hashtable): an array splatted into a script binds by position, and '-Tag' once
+          # became the branch of the mirror
+          $arguments = @{ Remote = 'https://github.com/${{ github.repository }}.git'; Push = $true; Keep = $keep }
+          if ($release) { $arguments.Tag = $tag }
+          & "$workspace/scripts/mirror.ps1" @arguments
           "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
@@ -142,7 +132,7 @@ jobs:
           $site = [regex]::Match((Get-Content '${{ steps.snapshot.outputs.workspace }}/Shared/Build/Stellar.Versions.props' -Raw),
             '<StellarSiteUri>([^<]+)</StellarSiteUri>').Groups[1].Value
           $notes = @(
-            "StellarEngine $version: the orchestra, every component at the commit below.",
+            "StellarEngine ${version}: the orchestra, every component at the commit below.",
             '',
             '| Component | Version | Commit |',
             '|---|---|---|'
