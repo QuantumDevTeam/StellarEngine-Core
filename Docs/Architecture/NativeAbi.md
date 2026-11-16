@@ -2,12 +2,12 @@
 
 - [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
-Anything C++ may ever need is written in C++. The native core owns what native code needs (containers, modules);
+Anything C++ may ever need is written in C++. The native core owns what native code needs (native modules, and the data native systems will work on);
 managed code holds an identifier or a handle and passes it back. C# is for logic, virtualization and object models
 on top: quants live in managed code only.
 
 ```
-Stellar.Core (C#)  ──  the classes it names: ContainerRegistry, ModuleRegistry, CoreContext, ...
+Stellar.Core (C#)  ──  the classes it names: CoreContext, ModuleRegistry, ...
         │              provided by one of two wrappers, picked by Stellar.Sdk
         ├── Windows:   Stellar.Native.Core.Wrapper.Cli ──────────────────────────────┐ C++ calls
         └── elsewhere: Stellar.Native.Core.Wrapper.Managed ── P/Invoke ──┐           │
@@ -38,18 +38,17 @@ The native core therefore has two surfaces:
 | `CoreContext` | the registries below, for one engine. `CoreContext::Default()` is the one of the process |
 | `Identifier` | 16 bytes, the layout of `Stellar.Kernel.Identifier`: a value, never registered |
 | `Label` | an identifier and a name, a value: there is no registry of labels |
-| `ContainerRegistry` | membership of data containers and the branches of rosters, by identifier |
 | `Modules::ModuleRegistry` | loaded native modules, by handle |
 
 ## Contexts
 
 The registries are not global: a `CoreContext` owns one of each, and every engine instance has its own. Two engines in
-one process (an editor and the game it runs) create the same container without seeing each other, and destroying a
-context takes its registries with it, unloading its native modules.
+one process (an editor and the game it runs) load native modules without seeing each other, and destroying a context
+takes its registries with it, unloading its native modules.
 
 | Side | The context of the running code |
 |---|---|
-| C++ | passed explicitly: `context.Containers().Create(id)` |
+| C++ | passed explicitly: `context.Modules().Load(path)` |
 | C ABI | the first argument of every function that reaches a registry; null is `CoreContext::Default()` |
 | C# | `Stellar.Core.Native.CoreContext.Current`: the context of the engine of `EngineScope.Resolve()`, or `Default` |
 
@@ -66,7 +65,7 @@ the same in C# and C++. An identifier is never registered: registries hold objec
 ## Wrappers
 
 Both wrappers define the same classes in the same namespaces, with the same members. Engine code never names a wrapper:
-it names `Stellar.Core.Data.Registry.ContainerRegistry`, and the SDK decides which assembly provides it.
+it names `Stellar.Core.Native.CoreContext`, and the SDK decides which assembly provides it.
 
 | | `Cli` | `Managed` |
 |---|---|---|
@@ -95,7 +94,7 @@ a `catch` of a native type in C++/CLI code no longer sees an exception thrown by
 `SEHException`. So every call into the core goes through `NativeCall` (`Wrapper/Interop.cli.h`):
 
 ```cpp
-return NativeCall<&nc::Data::Registry::ContainerRegistry::Count>(registry, NativeConvert::ToNative(container));
+return NativeCall<&nc::Modules::ModuleRegistry::Unload>(registry, NativeConvert::ToNative(handle));
 ```
 
 It is still a plain C++ call of the C++ method. The template that makes the call and catches is defined under
@@ -115,7 +114,7 @@ Used by the P/Invoke exports and by native modules.
 - **No exceptions.** An exception stops at `Failures::Guard` and becomes a `StellarResult`. Its message is kept per thread
   and read with `stellar_core_get_last_error`.
 - **Answers are not failures.** "Already registered" or "not found by name" come back as `0` in an `int32_t` out
-  parameter with `STELLAR_RESULT_OK`. A result code means the call itself failed: an unknown container, a stale handle.
+  parameter with `STELLAR_RESULT_OK`. A result code means the call itself failed: a missing library, a stale handle.
 - **UTF-8.** Strings are `StellarStringView`: a pointer and a size, not owned and not null-terminated.
 - **Explicit ownership.** The side that allocates, frees. Text and lists come back through a caller's buffer.
 - **Versioned.** Every incompatible change bumps the version.

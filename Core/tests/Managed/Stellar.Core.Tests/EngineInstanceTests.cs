@@ -1,3 +1,4 @@
+using Stellar.Core.Data.Collections;
 using Stellar.Core.EntryPoints;
 using Stellar.Core.Global;
 using Stellar.Core.Native;
@@ -22,23 +23,24 @@ public class EngineInstanceTests
     {
         var editor = new FakeEngine("Editor");
         var game = new FakeEngine("Game");
-        var container = Identifier.New();
+        Table<Service> table;
 
         using (EngineScope.Enter(editor))
         {
-            CoreContext.Current.Containers.Create(container).Should().BeTrue();
+            table = new Table<Service>();
             Engine.Services.Set(new Marker("editor"));
         }
 
         using (EngineScope.Enter(game))
         {
             Engine.Services.Find<Marker>().Should().BeNull();
-            CoreContext.Current.Containers.Exists(container).Should().BeFalse();
+            Engine.Registry.DataContainers.Exists(table.UID).Should().BeFalse();
         }
 
         CoreEngine.For(editor).Services.Find<Marker>()!.Name.Should().Be("editor");
         CoreEngine.For(editor).Native.Should().NotBeSameAs(CoreEngine.For(game).Native);
-        CoreContext.Default.Containers.Exists(container).Should().BeFalse();
+        CoreEngine.For(editor).Registry.DataContainers.Exists(table.UID).Should().BeTrue();
+        CoreEngine.Default.Registry.DataContainers.Exists(table.UID).Should().BeFalse();
 
         CoreEngine.Release(editor).Should().BeTrue();
         CoreEngine.Release(game).Should().BeTrue();
@@ -109,12 +111,11 @@ public class EngineInstanceTests
     {
         var engine = new FakeEngine("Short");
         var native = CoreEngine.For(engine).Native;
-        native.Containers.Create(Identifier.New()).Should().BeTrue();
 
         CoreEngine.Release(engine).Should().BeTrue();
 
         native.IsDisposed.Should().BeTrue();
-        ((Action)(() => native.Containers.Exists(Identifier.New()))).Should().Throw<ObjectDisposedException>();
+        ((Action)(() => _ = native.Modules.Count)).Should().Throw<ObjectDisposedException>();
         CoreEngine.Release(engine).Should().BeFalse();
     }
 

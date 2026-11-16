@@ -88,7 +88,7 @@ namespace Stellar::Core::Native
     managed or native by the #pragma state where it is defined, not where it is used: every instantiation of
     InvokeMember below is native, wherever NativeCall is written.
 
-        NativeCall<&nc::Data::Registry::ContainerRegistry::Count>(registry, id)
+        NativeCall<&nc::Modules::ModuleRegistry::Unload>(registry, handle)
 
     is a plain C++ call of the C++ method, nothing flat in between.
 */

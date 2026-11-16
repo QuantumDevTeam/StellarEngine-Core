@@ -1,241 +1,144 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using Stellar.Core.Data.Registry;
 using Stellar.Core.Quantization;
-using Stellar.Kernel;
 using Stellar.Kernel.Data.Collections;
 using Stellar.Kernel.Data.Registry;
-using Stellar.Kernel.Quantization;
 
 namespace Stellar.Core.Data.Collections;
 
-/// <inheritdoc cref="IDataContainer"/>
-/// <typeparam name="T">Type of stored data.</typeparam>
+/// <summary>
+/// The base of the containers: items by key, a quant with an identity, always registered, sealable.
+/// </summary>
 /// <remarks>
-/// <para>The membership lives on the native side, in <see cref="ContainerRegistry"/>, under the identifier of this
-/// container: native systems walk a container without calling managed code. This class keeps only the managed objects,
-/// so that it can hand them out.</para>
-/// <para>The native side is the source of truth: an item is stored here only after the native container accepted it.</para>
+/// <para>A new container goes into the registry of containers of the current engine (implicit registration, see
+/// <see cref="Stellar.Core.Quantization.RegistrableQuant{T,TMeta}"/>), so it can be found by its identifier from
+/// anywhere. Disposing it removes it from every registry it is in.</para>
+/// <para>Reads take no lock and enumerations see a snapshot (<see cref="ConcurrentMap{TKey,TValue}"/>);
+/// <see cref="Changed"/> tells what changed. <see cref="Seal"/> fixes the contents for good.</para>
 /// </remarks>
-public abstract class DataContainer<T>
-    : Quant<MetaQuant>, IDataContainer, IEnumerable<T>
-    where T : IIdentifiableQuantumObject
+/// <typeparam name="TKey">The key of an item.</typeparam>
+/// <typeparam name="TValue">The item.</typeparam>
+public abstract class DataContainer<TKey, TValue>
+    : Quant<MetaQuant>, IDataContainer<TKey, TValue>
+    where TKey : notnull
 {
-    /// <summary>
-    /// Gets the managed objects of the container.
-    /// </summary>
-    protected FastConcurrentIdentifierMap<T> Data { get; }
+    private volatile bool _sealed;
 
     /// <summary>
-    /// Gets the native containers.
+    /// Makes a container.
     /// </summary>
-    protected ContainerRegistry Native { get; } = Global.CoreEngine.Current.Native.Containers;
-
-    #region Constructors
-
-    /// <summary>
-    /// Creates a container by using meta and typed data.
-    /// </summary>
-    /// <param name="meta">A meta quant of this container.</param>
-    /// <param name="data">Initial data for this container.</param>
-    protected DataContainer(MetaQuant meta, FastConcurrentIdentifierMap<T> data)
-        : base(meta)
+    /// <param name="meta">Its primary meta; a new one if <c>null</c>.</param>
+    /// <param name="comparer">How keys compare; the default comparer of <typeparamref name="TKey"/> if <c>null</c>.</param>
+    protected DataContainer(MetaQuant? meta = null, IEqualityComparer<TKey>? comparer = null)
+        : base(meta ?? new MetaQuant())
     {
-        ArgumentNullException.ThrowIfNull(data);
-
-        Data = data;
-        Native.Create(UID);
-
-        foreach (var item in data.GetSnapshot())
-            Native.Add(UID, item.UID);
-
-        if (IsReadOnly)
-            Native.Seal(UID);
-
+        Items = new ConcurrentMap<TKey, TValue>(comparer);
         Registrations = new Registrations(this);
 
-        // A container is always registered: by default in the data containers of the current engine
+        // Called before the constructors of derived classes: an override returns a constant
         if (RegistersImplicitly) Global.CoreEngine.Current.Registry.RegisterImplicitly(this, typeof(IDataContainer));
     }
 
-    /// <summary>
-    /// Creates a container by using meta and data stored in a dictionary.
-    /// </summary>
-    /// <param name="meta">A meta quant of this container.</param>
-    /// <param name="data">Initial data stored in a dictionary.</param>
-    protected DataContainer(MetaQuant meta, Dictionary<Identifier, T> data)
-        : this(meta, new FastConcurrentIdentifierMap<T>(data))
-    {
-    }
-
-    /// <summary>
-    /// Creates a container by using meta only.
-    /// </summary>
-    /// <param name="meta">A meta quant of this container.</param>
-    protected DataContainer(MetaQuant meta)
-        : this(meta, new FastConcurrentIdentifierMap<T>())
-    {
-    }
-
-    #endregion
-
-    /// <summary>
-    /// Gets a value indicating whether the content is fixed at creation.
-    /// </summary>
-    /// <remarks>Read by the constructor of this class: an override must not depend on the state of the derived class.</remarks>
-    protected virtual bool IsReadOnly => true;
-
-    /// <summary>
-    /// Gets a container by its identifier.
-    /// </summary>
-    /// <param name="identifier">The identifier of the container.</param>
-    /// <returns>The container, or <c>null</c> if it is not registered.</returns>
-    public static IDataContainer? GetContainer(Identifier identifier)
-    {
-        return Global.CoreEngine.Current.Registry.DataContainers.Get(identifier);
-    }
-
-    #region Item support
-
-    /// <inheritdoc/>
-    public abstract IIdentifiableQuantumObject? Get(Identifier identifier);
-
-    /// <summary>
-    /// Stores a quantum object by its identifier.
-    /// </summary>
-    /// <param name="obj">The object to store.</param>
-    /// <returns><c>true</c> if the object was stored; otherwise, <c>false</c>.</returns>
-    public virtual bool Set(IIdentifiableQuantumObject obj)
-    {
-        return false;
-    }
-
-    /// <summary>
-    /// Attempts to remove and return the object stored in the container.
-    /// </summary>
-    /// <param name="id">The unique identifier of the object.</param>
-    /// <returns>The object if found; otherwise, <c>default</c>.</returns>
-    public virtual T? Pop(Identifier id)
-    {
-        return default;
-    }
-
-    /// <summary>
-    /// Base item operations with the container.
-    /// </summary>
-    /// <param name="key">The unique identifier of the object.</param>
-    /// <exception cref="KeyNotFoundException">Thrown if <paramref name="key"/> is not found in the container.</exception>
-    public T this[Identifier key]
-    {
-        get => Get(key) is T value ? value : throw new KeyNotFoundException($"{key} is not in the container");
-        set => Set(value);
-    }
-
-    #endregion
-
-    #region Encapsulation
-
-    /// <summary>
-    /// Updates the main snapshot with current values and clears the hot items list.
-    /// </summary>
-    /// <remarks>
-    /// Call this method once per frame before iteration. The method is thread-safe but acquires a write lock,
-    /// so do not call it too frequently.
-    /// </remarks>
-    public void RefreshSnapshot()
-    {
-        Data.RefreshSnapshot();
-    }
-
-    /// <inheritdoc/>
-    public bool ContainsKey(Identifier key)
-    {
-        return Native.Contains(UID, key);
-    }
-
-    /// <inheritdoc/>
-    public bool Contains(IIdentifiableQuantumObject obj)
-    {
-        return ContainsKey(obj.UID);
-    }
-
-    /// <inheritdoc/>
-    public int Count => Native.Count(UID);
-
-    /// <inheritdoc/>
-    public bool IsEmpty => Count == 0;
-
-    /// <summary>
-    /// Gets the values of the last snapshot.
-    /// </summary>
-    public T[] Values => Data.GetSnapshot();
-
-    /// <summary>
-    /// Gets the identifiers of the items, as the native side knows them. This is what is passed to native systems.
-    /// </summary>
-    public Identifier[] Identifiers => Native.Items(UID);
-
-    /// <summary>
-    /// Clears the container.
-    /// </summary>
-    /// <returns><c>false</c> if the container is read-only.</returns>
-    public bool Clear()
-    {
-        if (!Native.Clear(UID))
-            return false;
-
-        Data.Clear();
-        return true;
-    }
-
-    /// <summary>
-    /// Executes an action for every element in the container, including hot items.
-    /// </summary>
-    /// <param name="action">The action to perform on each element.</param>
-    /// <remarks>
-    /// Iterates first over the snapshot, then over hot items. The iteration is lock-free and thread-safe.
-    /// </remarks>
-    public void ForEachReadOnly(Action<T> action)
-    {
-        Data.ForEachReadOnly(action);
-    }
-
-    /// <summary>
-    /// Iterates over elements until a predicate returns <c>false</c>.
-    /// </summary>
-    /// <param name="predicate">A function that receives an element and returns <c>true</c> to continue iteration.</param>
-    public void ForEachUntil(Func<T, bool> predicate)
-    {
-        Data.ForEachUntil(predicate);
-    }
-
-    /// <inheritdoc/>
-    public IEnumerator<T> GetEnumerator()
-    {
-        return Data.GetEnumerator();
-    }
-
-    /// <inheritdoc/>
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-    #endregion
-
     /// <inheritdoc/>
     public IRegistrations Registrations { get; }
+
+    /// <summary>
+    /// Raised after each change of the items, out of any lock.
+    /// </summary>
+    public event Action<MapChange<TKey, TValue>>? Changed
+    {
+        add => Items.Changed += value;
+        remove => Items.Changed -= value;
+    }
+
+    /// <inheritdoc/>
+    public int Count => Items.Count;
+
+    /// <inheritdoc/>
+    public bool IsEmpty => Items.IsEmpty;
+
+    /// <inheritdoc/>
+    public bool IsSealed => _sealed;
+
+    /// <inheritdoc/>
+    public IReadOnlyCollection<TKey> Keys => Items.Keys;
+
+    /// <inheritdoc/>
+    public IReadOnlyCollection<TValue> Values => Items.Values;
+
+    /// <summary>
+    /// Gets the items, by key.
+    /// </summary>
+    protected ConcurrentMap<TKey, TValue> Items { get; }
 
     /// <summary>
     /// Gets whether a new container goes into the registries of the current engine by itself. <c>true</c> by default.
     /// </summary>
     protected virtual bool RegistersImplicitly => true;
 
+    /// <inheritdoc/>
+    public bool ContainsKey(TKey key)
+    {
+        return Items.ContainsKey(key);
+    }
+
+    /// <inheritdoc/>
+    public bool TryGet(TKey key, [MaybeNullWhen(false)] out TValue value)
+    {
+        return Items.TryGet(key, out value);
+    }
+
+    /// <inheritdoc/>
+    public TValue Get(TKey key)
+    {
+        return Items.TryGet(key, out var value)
+            ? value
+            : throw new KeyNotFoundException($"{key} is not in {GetType().Name} {UID}");
+    }
+
     /// <summary>
-    /// Removes the container from every registry it is in and destroys its native side.
+    /// Fixes the contents for good: every change from now on throws.
     /// </summary>
-    public void Dispose()
+    public void Seal()
+    {
+        _sealed = true;
+    }
+
+    /// <summary>
+    /// Enumerates the items as they were when the enumeration started.
+    /// </summary>
+    public IEnumerator<TValue> GetEnumerator()
+    {
+        return Items.Snapshot.Select(pair => pair.Value).GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    /// <summary>
+    /// Removes the container from every registry it is in.
+    /// </summary>
+    public virtual void Dispose()
     {
         Registrations.UnregisterAll();
-        Native.Destroy(UID);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc/>
+    public override string ToString()
+    {
+        return $"{GetType().Name} {UID} ({Count}{(IsSealed ? ", sealed" : "")})";
+    }
+
+    /// <summary>
+    /// Throws if the container is sealed: called before every change.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if it is.</exception>
+    protected void ThrowIfSealed()
+    {
+        if (_sealed) throw new InvalidOperationException($"{this} is sealed: its contents never change again");
     }
 }

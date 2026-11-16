@@ -52,9 +52,29 @@ Objects no longer register themselves: registries do, and tell them.
 | `QuantsRegistry<T>`, `MetaQuantsRegistry<T>`, `DataContainerRegistry`, `ConcurrentRegistry<T>` | `Registry<T>` |
 | a cast after `registry.Get(id)` | `registry.Get<TDerived>(id)`: `null` when the object is not one |
 | a quant in the registry of its exact type | in the registry of its home type and of every type of its hierarchy marked `[StellarRegistry]` |
-| `IFailureLevel : IRegistrableQuantumObject` | `IFailureLevel : ILabeled, IDisposable`: a level lives in the container of its dispatcher |
+| `IFailureLevel : IRegistrableQuantumObject` | `IFailureLevel : ILabeled, IDisposable`: a level lives in the table of its dispatcher |
 
 `RegistersImplicitly` turns the implicit registration off for a class.
+
+## Collections and containers
+
+Containers hold the objects of the world, collections hold working data. Both are managed only: the native
+mirror of the membership of containers is gone (`ContainerRegistry`, `stellar_container_*`, `CoreContext.Containers`).
+
+| Before | Now |
+|---|---|
+| `DataContainer<T>` | `DataContainer<TKey, TValue>`: items by key, registered, sealable, `Changed` |
+| `ConstantTable<T>`, `WritableTable<T>` | `Table<T>`: objects by identifier, `Get<TItem>`; `Seal()` instead of a read-only type |
+| `Roster<T>` with `SaveBranch`, `PopBranch` | `Roster<T>`: `AddBranch`, `NewBranch`, `RemoveBranch`, `Find` through the branches; never holds itself |
+| nothing | `DataTable<TRow>`: rows of one type by name |
+| `IDataContainer.Get(id)`, `ContainsKey`, `Contains(obj)` | `IDataContainer` (`Count`, `IsSealed`) and `IDataContainer<TKey, TValue>` (`TryGet`, `Get`, `ContainsKey`, `Keys`, `Values`) |
+| `DataContainer<T>.GetContainer(id)` | `Engine.Registry.DataContainers.Get<Table<T>>(id)` |
+| `FastConcurrentIdentifierMap<T>`, `ConcurrentIdentifierMap<T>`, `IdentifierComparer` | `ConcurrentMap<TKey, TValue>` |
+| nothing | `ConcurrentList<T>`, `ConcurrentSet<T>` |
+
+`ConcurrentList`, `ConcurrentMap` and `ConcurrentSet` are safe from any thread, read without a lock, enumerate a
+snapshot shared until the next change, and raise `Changed` with what changed. `Catalog<TKey, TValue>` is a
+`ConcurrentMap` that is an engine catalog.
 
 ## Catalogs
 

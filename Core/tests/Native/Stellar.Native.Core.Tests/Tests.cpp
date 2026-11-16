@@ -281,59 +281,6 @@ namespace
         CHECK(!pool.IsValid(StellarHandle{1000, 1}));
     }
 
-    void TestContainerRegistry()
-    {
-        CoreContext context;
-        auto& registry = context.Containers();
-        const auto container = Identifier::Create();
-        const auto branch = Identifier::Create();
-        const auto item = Identifier::Create();
-
-        CHECK(registry.Create(container));
-        CHECK(!registry.Create(container));
-        CHECK(registry.Exists(container));
-
-        CHECK(registry.Add(container, item));
-        CHECK(!registry.Add(container, item));
-        CHECK(registry.Contains(container, item));
-        CHECK(registry.Count(container) == 1);
-        CHECK(registry.Items(container) == std::vector{item});
-
-        // A branch is a container too, and a container is not its own branch
-        CHECK(registry.Create(branch));
-        CHECK(registry.AddBranch(container, branch));
-        CHECK(!registry.AddBranch(container, branch));
-        CHECK(!registry.AddBranch(container, container));
-        CHECK(registry.ContainsBranch(container, branch));
-        CHECK(registry.Branches(container) == std::vector{branch});
-        CHECK(registry.RemoveBranch(container, branch));
-
-        // Sealed: the contents are fixed
-        registry.Seal(container);
-        CHECK(registry.IsSealed(container));
-        CHECK(!registry.Add(container, Identifier::Create()));
-        CHECK(!registry.Remove(container, item));
-        CHECK(!registry.Clear(container));
-        CHECK(registry.Count(container) == 1);
-
-        CHECK(registry.Destroy(container));
-        CHECK(registry.Destroy(branch));
-        CHECK(!registry.Destroy(container));
-        CHECK(!registry.Exists(container));
-
-        // An unknown container is a failure, not an empty one
-        bool notFound = false;
-        try
-        {
-            (void)registry.Count(container);
-        }
-        catch (const Failures::NativeException& exception)
-        {
-            notFound = exception.GetResult() == STELLAR_RESULT_NOT_FOUND;
-        }
-        CHECK(notFound);
-    }
-
     void TestExports(const std::string& modulePath)
     {
         Ptr<StellarCoreContext> context;
@@ -364,19 +311,7 @@ namespace
         CHECK(std::memcmp(&uid, &parsed, sizeof(uid)) == 0);
         CHECK(stellar_identifier_parse({"bad", 3}, &parsed, &answer) == STELLAR_RESULT_OK && answer == 0);
 
-        // Containers through the exports, and a failure: an unknown container
-        StellarUid container{};
         size_t count = 0;
-        CHECK(stellar_identifier_create(&container) == STELLAR_RESULT_OK);
-        CHECK(stellar_container_create(context, &container, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_container_add(context, &container, &uid, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_container_count(context, &container, &count) == STELLAR_RESULT_OK && count == 1);
-
-        StellarUid items[1]{};
-        CHECK(stellar_container_items(context, &container, &items[0], 1, &required) == STELLAR_RESULT_OK && required == 1);
-        CHECK(std::memcmp(&items[0], &uid, sizeof(uid)) == 0);
-        CHECK(stellar_container_destroy(context, &container, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_container_count(context, &container, &count) == STELLAR_RESULT_NOT_FOUND);
 
         // Errors are data: a failure must come back as a code and a message
         StellarHandle module{};
@@ -396,11 +331,9 @@ namespace
         CHECK(stellar_module_count(context, &count) == STELLAR_RESULT_OK && count == 0);
 
         // The default context never sees what another context holds
-        StellarUid probe{};
-        CHECK(stellar_identifier_create(&probe) == STELLAR_RESULT_OK);
-        int32_t inDefault = -1;
-        CHECK(stellar_container_create(context, &probe, &inDefault) == STELLAR_RESULT_OK && inDefault == 1);
-        CHECK(stellar_container_exists(nullptr, &probe, &inDefault) == STELLAR_RESULT_OK && inDefault == 0);
+        CHECK(stellar_module_load(context, {modulePath.data(), modulePath.size()}, &module) == STELLAR_RESULT_OK);
+        size_t inDefault = 1;
+        CHECK(stellar_module_count(nullptr, &inDefault) == STELLAR_RESULT_OK && inDefault == 0);
         CHECK(stellar_core_context_destroy(context) == STELLAR_RESULT_OK);
     }
 
@@ -414,20 +347,30 @@ namespace
         CoreContext editor;
         CoreContext game;
 
-        // Two engines know nothing of each other: the same container in both
-        const auto id = Identifier::Create();
-        CHECK(editor.Containers().Create(id));
-        CHECK(!game.Containers().Exists(id));
+        // Two engines know nothing of each other: a module of one is not in the other
+        constexpr char name[] = "Context";
+        const StellarModuleInfo info = {
+            sizeof(StellarModuleInfo),
+            {STELLAR_MODULE_CONTRACT_MAJOR, STELLAR_MODULE_CONTRACT_MINOR},
+            {name, 7},
+            {name, 7},
+            nullptr,
+            nullptr
+        };
+
+        (void)editor.Modules().Add(info);
+        CHECK(editor.Modules().size() == 1);
+        CHECK(game.Modules().size() == 0);
 
         CHECK(&CoreContext::Default() == &CoreContext::Default());
-        CHECK(&editor.Containers() != &game.Containers());
+        CHECK(&editor.Modules() != &game.Modules());
 
         // A context that goes takes its registries with it
         {
             CoreContext temporary;
-            CHECK(temporary.Containers().Create(id));
+            (void)temporary.Modules().Add(info);
         }
-        CHECK(editor.Containers().Exists(id));
+        CHECK(editor.Modules().size() == 1);
     }
 
     void TestModuleContract()
@@ -493,7 +436,6 @@ int main(int, char* argv[])
     TestDoubleBufferedMap();
     TestDataContainers();
     TestHandlePool();
-    TestContainerRegistry();
     TestExports((directory / "Stellar.Native.TestModule.dll").string());
     TestModuleContract();
     TestContexts();

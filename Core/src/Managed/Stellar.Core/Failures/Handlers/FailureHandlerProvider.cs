@@ -29,13 +29,13 @@ public readonly record struct FailureBinding(FailureType Type, IFailureLevel? Le
 /// Meta of a handler provider: the handlers and what they are bound to.
 /// </summary>
 /// <param name="handlers">The container of handlers. A new one is created when omitted.</param>
-public class HandlerProviderMeta(DataContainer<IFailureHandler>? handlers = null)
+public class HandlerProviderMeta(Table<IFailureHandler>? handlers = null)
     : MetaQuant(Identifier.New())
 {
     /// <summary>
     /// Gets the handlers.
     /// </summary>
-    public DataContainer<IFailureHandler> Handlers { get; } = handlers ?? new WritableTable<IFailureHandler>();
+    public Table<IFailureHandler> Handlers { get; } = handlers ?? new Table<IFailureHandler>();
 
     /// <summary>
     /// Gets the binding of each handler.
@@ -77,7 +77,7 @@ public class FailureHandlerProvider(HandlerProviderMeta meta)
 
         return MetaQuant.Bindings
             .Where(binding => binding.Value.Matches(failure))
-            .Select(binding => MetaQuant.Handlers[binding.Key])
+            .Select(binding => MetaQuant.Handlers.Get(binding.Key))
             .ToArray();
     }
 }

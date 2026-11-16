@@ -55,23 +55,6 @@ STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_parse(StellarS
 STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_format(Ptr<const StellarUid> identifier, Ptr<char> buffer, size_t capacity, Ptr<size_t> required);
 
 
-// Containers
-
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_create(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<int32_t> created);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_destroy(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<int32_t> destroyed);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_exists(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<int32_t> exists);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_seal(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_is_sealed(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<int32_t> sealed);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_add(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<const StellarUid> item, Ptr<int32_t> added);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_remove(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<const StellarUid> item, Ptr<int32_t> removed);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_contains(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<const StellarUid> item, Ptr<int32_t> contained);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_count(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<size_t> count);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_items(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<StellarUid> buffer, size_t capacity, Ptr<size_t> required);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_clear(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<int32_t> cleared);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_add_branch(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<const StellarUid> branch, Ptr<int32_t> added);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_remove_branch(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<const StellarUid> branch, Ptr<int32_t> removed);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_contains_branch(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<const StellarUid> branch, Ptr<int32_t> contained);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_container_branches(Ptr<StellarCoreContext> context, Ptr<const StellarUid> container, Ptr<StellarUid> buffer, size_t capacity, Ptr<size_t> required);
 
 // Modules
 

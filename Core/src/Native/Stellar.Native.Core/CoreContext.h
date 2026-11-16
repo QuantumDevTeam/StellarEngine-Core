@@ -8,7 +8,6 @@
 
 #include <memory>
 
-#include "Data/Registry/ContainerRegistry.h"
 #include "Modules/ModuleRegistry.h"
 
 namespace Stellar::Native::Core
@@ -35,8 +34,6 @@ namespace Stellar::Native::Core
 
 
 
-        /// @brief Gets the registry of the membership of containers.
-        [[nodiscard]] Link<Data::Registry::ContainerRegistry> Containers() const;
 
         /// @brief Gets the registry of native modules. Destroying the context unloads its modules.
         [[nodiscard]] Link<Modules::ModuleRegistry> Modules() const;

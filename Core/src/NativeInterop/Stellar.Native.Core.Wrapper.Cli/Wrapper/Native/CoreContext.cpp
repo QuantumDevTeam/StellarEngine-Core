@@ -1,5 +1,4 @@
 #include "Wrapper/Native/CoreContext.cli.h"
-#include "Wrapper/Data/Registry/ContainerRegistry.cli.h"
 #include "Wrapper/Modules/ModuleRegistry.cli.h"
 
 using Stellar::Kernel::Lifecycle::EngineScope;
@@ -11,7 +10,6 @@ namespace Stellar::Core::Native
         _native(native),
         _owned(owned)
     {
-        _containers = gcnew Data::Registry::ContainerRegistry(this);
         _modules = gcnew ::Stellar::Core::Modules::ModuleRegistry(this);
     }
 
@@ -66,7 +64,6 @@ namespace Stellar::Core::Native
 
 
 
-    Data::Registry::ContainerRegistry^ CoreContext::Containers::get() { return _containers; }
 
     ::Stellar::Core::Modules::ModuleRegistry^ CoreContext::Modules::get() { return _modules; }
 

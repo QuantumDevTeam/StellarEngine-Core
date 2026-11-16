@@ -17,7 +17,7 @@ public interface IFailureDispatcherMeta
     /// <summary>
     /// Gets the failure levels known to the dispatcher.
     /// </summary>
-    DataContainer<IFailureLevel> FailureLevels { get; }
+    Table<IFailureLevel> FailureLevels { get; }
 
     /// <summary>
     /// Gets the source of failure handlers.
@@ -29,13 +29,13 @@ public interface IFailureDispatcherMeta
 /// <param name="failureLevels">The container of failure levels. A new one is created when omitted.</param>
 /// <param name="failureHandlerProvider">The source of handlers. A new one is created when omitted.</param>
 public class FailureDispatcherMeta(
-    DataContainer<IFailureLevel>? failureLevels = null,
+    Table<IFailureLevel>? failureLevels = null,
     IFailureHandlerProvider? failureHandlerProvider = null
 ) : MetaQuant(Identifier.New()), IFailureDispatcherMeta
 {
     /// <inheritdoc/>
-    public DataContainer<IFailureLevel> FailureLevels { get; } =
-        failureLevels ?? new WritableTable<IFailureLevel>();
+    public Table<IFailureLevel> FailureLevels { get; } =
+        failureLevels ?? new Table<IFailureLevel>();
 
     /// <inheritdoc/>
     public IFailureHandlerProvider FailureHandlerProvider { get; } =

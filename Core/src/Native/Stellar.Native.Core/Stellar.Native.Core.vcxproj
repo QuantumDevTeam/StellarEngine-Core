@@ -56,7 +56,6 @@
         <ClCompile Include="pch.cpp">
             <PrecompiledHeader>Create</PrecompiledHeader>
         </ClCompile>
-        <ClCompile Include="Data\Registry\ContainerRegistry.cpp"/>
         <ClCompile Include="HeadersCheck.cpp">
             <PrecompiledHeader>NotUsing</PrecompiledHeader>
             <LanguageStandard>stdcpp20</LanguageStandard>

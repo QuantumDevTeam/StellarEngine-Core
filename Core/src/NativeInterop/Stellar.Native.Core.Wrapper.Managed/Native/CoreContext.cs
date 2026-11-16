@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Stellar.Core.Data.Registry;
 using Stellar.Core.Modules;
 using Stellar.Kernel.Lifecycle;
 
@@ -26,7 +25,6 @@ public sealed unsafe class CoreContext
     {
         _handle = handle;
         _owned = owned;
-        Containers = new ContainerRegistry(this);
         Modules = new ModuleRegistry(this);
     }
 
@@ -53,9 +51,6 @@ public sealed unsafe class CoreContext
 
     /// <summary>Gets whether the context was disposed.</summary>
     public bool IsDisposed => _owned && _handle == 0;
-
-    /// <summary>Gets the registry of the membership of containers.</summary>
-    public ContainerRegistry Containers { get; }
 
     /// <summary>Gets the registry of native modules.</summary>
     public ModuleRegistry Modules { get; }

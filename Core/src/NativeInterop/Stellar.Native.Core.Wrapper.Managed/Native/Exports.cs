@@ -34,8 +34,6 @@ internal static unsafe partial class Exports
     /// <summary>A call that fills a buffer of text.</summary>
     internal delegate NativeResult TextReader(byte* buffer, nuint capacity, nuint* required);
 
-    /// <summary>A call that fills a buffer of identifiers.</summary>
-    internal delegate NativeResult IdentifierReader(Identifier* buffer, nuint capacity, nuint* required);
 
     internal static bool Ask(NativeResult result, int answer)
     {
@@ -64,35 +62,6 @@ internal static unsafe partial class Exports
             {
                 Check(reader(retry, (nuint)heapBuffer.Length, &required));
                 return Encoding.UTF8.GetString(retry, (int)required);
-            }
-        }
-    }
-
-    internal static Identifier[] ReadIdentifiers(IdentifierReader reader)
-    {
-        while (true)
-        {
-            nuint required;
-            var probe = reader(null, 0, &required);
-
-            if (probe == NativeResult.Ok)
-                return [];
-
-            if (probe != NativeResult.BufferTooSmall)
-                throw new NativeCoreException(probe, LastError());
-
-            var result = new Identifier[(int)required];
-
-            fixed (Identifier* buffer = result)
-            {
-                var read = reader(buffer, (nuint)result.Length, &required);
-
-                // The set may grow between the two calls: then ask again
-                if (read == NativeResult.BufferTooSmall)
-                    continue;
-
-                Check(read);
-                return result.AsSpan(0, (int)required).ToArray();
             }
         }
     }
@@ -143,60 +112,6 @@ internal static unsafe partial class Exports
     [LibraryImport(Library)]
     internal static partial NativeResult stellar_identifier_format(Identifier* identifier, byte* buffer, nuint capacity,
         nuint* required);
-
-    // Containers
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_create(nint context, Identifier* container, int* created);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_destroy(nint context, Identifier* container, int* destroyed);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_exists(nint context, Identifier* container, int* exists);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_seal(nint context, Identifier* container);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_is_sealed(nint context, Identifier* container, int* isSealed);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_add(nint context, Identifier* container, Identifier* item, int* added);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_remove(nint context, Identifier* container, Identifier* item,
-        int* removed);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_contains(nint context, Identifier* container, Identifier* item,
-        int* contained);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_count(nint context, Identifier* container, nuint* count);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_items(nint context, Identifier* container, Identifier* buffer,
-        nuint capacity, nuint* required);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_clear(nint context, Identifier* container, int* cleared);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_add_branch(nint context, Identifier* container, Identifier* branch,
-        int* added);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_remove_branch(nint context, Identifier* container, Identifier* branch,
-        int* removed);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_contains_branch(nint context, Identifier* container, Identifier* branch,
-        int* contained);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_branches(nint context, Identifier* container, Identifier* buffer,
-        nuint capacity, nuint* required);
 
     // Modules
 

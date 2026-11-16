@@ -6,7 +6,6 @@ namespace Stellar::Native::Core
     struct CoreContext::Impl
     {
         // Declared in reverse order of dependence: modules go first when the context is destroyed
-        Data::Registry::ContainerRegistry containers;
         Modules::ModuleRegistry modules;
     };
 
@@ -19,11 +18,6 @@ namespace Stellar::Native::Core
     {
         static CoreContext instance;
         return instance;
-    }
-
-    Link<Data::Registry::ContainerRegistry> CoreContext::Containers() const
-    {
-        return _impl->containers;
     }
 
     Link<Modules::ModuleRegistry> CoreContext::Modules() const

@@ -6,11 +6,6 @@
 
 #include "Wrapper/Interop.cli.h"
 
-namespace Stellar::Core::Data::Registry
-{
-    ref class ContainerRegistry;
-}
-
 namespace Stellar::Core::Modules
 {
     ref class ModuleRegistry;
@@ -38,7 +33,6 @@ namespace Stellar::Core::Native
 
         nc::CoreContext* _native;
         bool _owned;
-        Data::Registry::ContainerRegistry^ _containers;
         ::Stellar::Core::Modules::ModuleRegistry^ _modules;
 
         CoreContext(nc::CoreContext* native, bool owned);
@@ -69,13 +63,6 @@ namespace Stellar::Core::Native
 
         /// <summary>Gets whether the context was disposed.</summary>
         property bool IsDisposed { bool get() { return _native == nullptr; } }
-
-        /// <summary>Gets the registry of identifiers.</summary>
-
-        /// <summary>Gets the registry of labels.</summary>
-
-        /// <summary>Gets the registry of the membership of containers.</summary>
-        property Data::Registry::ContainerRegistry^ Containers { Data::Registry::ContainerRegistry^ get(); }
 
         /// <summary>Gets the registry of native modules.</summary>
         property ::Stellar::Core::Modules::ModuleRegistry^ Modules { ::Stellar::Core::Modules::ModuleRegistry^ get(); }

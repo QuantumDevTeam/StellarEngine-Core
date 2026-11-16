@@ -6,7 +6,7 @@ namespace Stellar.Kernel.FileSystem;
 /// Mounts the domains of one scheme: directories, assembly resources, archives, a network, a world of a game.
 /// </summary>
 /// <remarks>
-/// <para>A driver is registered in a file system (<see cref="IFileSystem.RegisterDriver"/>), and the file system
+/// <para>A driver is registered in a file system (<see cref="IFileSystem.Drivers"/>, <see cref="FileSystemExtensions.AddDriver"/>), and the file system
 /// picks it by <see cref="Scheme"/> when a domain is mounted: one lookup, once, not a question per file.</para>
 /// <para>The driver keeps no state of its domains: what a domain needs (its root, an open archive, a connection)
 /// lives in the <see cref="IDomain"/> it returns. One driver may serve several file systems, so several engine

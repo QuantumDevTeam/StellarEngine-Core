@@ -53,6 +53,6 @@ public abstract class FailureLevel
     /// </summary>
     public void Dispose()
     {
-        _dispatcherMeta.FailureLevels.Pop(UID);
+        _dispatcherMeta.FailureLevels.Remove(UID);
     }
 }
