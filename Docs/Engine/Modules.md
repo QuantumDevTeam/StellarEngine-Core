@@ -79,6 +79,10 @@ on, directly or not, every module after the ones it depends on. `Stellar.Runtime
 above the core into a load context of its own, starts their entry points level by level, then the application. See
 [Runtime](../Architecture/Runtime.md).
 
+An entry point (a `StellarEntryPoint` marked `[StellarEntryPoint]`) is optional for a module: one without it is a
+library, loaded for the modules that use it, and takes no part in the start, the stop or the loops of the engine.
+The application must have one.
+
 ## The native part
 
 A native project of a module imports two shared files:
