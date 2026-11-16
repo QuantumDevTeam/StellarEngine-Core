@@ -18,6 +18,25 @@ public class IdentifierTests
     }
 
     [Fact]
+    public void NewIdentifiers_AreVersion4Uuids_DifferentOnEveryThread()
+    {
+        var made = new System.Collections.Concurrent.ConcurrentBag<Identifier>();
+
+        Parallel.For(0, 8, _ =>
+        {
+            for (var i = 0; i < 5000; i++) made.Add(Identifier.New());
+        });
+
+        made.Distinct().Should().HaveCount(40_000);
+        made.Should().AllSatisfy(id =>
+        {
+            var text = id.ToString();
+            text[14].Should().Be('4');
+            "89ab".Should().Contain(text[19].ToString());
+        });
+    }
+
+    [Fact]
     public void TheTextForm_GoesBackAndForth()
     {
         var id = Identifier.New();

@@ -145,6 +145,49 @@ public class ConcurrentMapTests
         map.Count.Should().Be(2000 - (2000 + 2) / 3);
         map.Snapshot.Should().HaveCount(map.Count);
     }
+
+    [Fact]
+    public void KeysAndValues_AreSharedUntilTheMapChanges()
+    {
+        var map = new ConcurrentMap<string, int>();
+        map.Set("a", 1);
+        map.Set("b", 2);
+
+        var keys = map.Keys;
+        var values = map.Values;
+        map.Keys.Should().BeSameAs(keys);
+        map.Values.Should().BeSameAs(values);
+        keys.Should().BeEquivalentTo(["a", "b"]);
+
+        map.Set("b", 3);
+        map.Keys.Should().NotBeSameAs(keys);
+        map.Values.Should().BeEquivalentTo([1, 3]);
+        map.Select(pair => pair.Value).Should().BeEquivalentTo([1, 3]);
+    }
+
+    [Fact]
+    public void AKeyThatCannotBeHeld_HasNoValue()
+    {
+        var plain = new ConcurrentMap<string, int>();
+        plain.ContainsKey(null!).Should().BeFalse();
+
+        var names = new LowerCaseMap();
+        names.Set("Hero", 1);
+
+        names.TryGet("HERO", out var value).Should().BeTrue();
+        value.Should().Be(1);
+        names.ContainsKey("").Should().BeFalse();
+        names.Invoking(map => map.Set("", 2)).Should().Throw<ArgumentException>();
+    }
+
+    private sealed class LowerCaseMap
+        : ConcurrentMap<string, int>
+    {
+        protected override string NormalizeKey(string key)
+        {
+            return string.IsNullOrEmpty(key) ? throw new ArgumentException("No name", nameof(key)) : key.ToLowerInvariant();
+        }
+    }
 }
 
 public class DataContainerTests

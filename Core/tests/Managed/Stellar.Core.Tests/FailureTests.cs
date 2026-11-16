@@ -200,6 +200,26 @@ public class CatcherTests
     }
 
     [Fact]
+    public void ACatcherThatKeepsAFew_KeepsTheLastOnes_AndCountsThemAll()
+    {
+        using var catcher = new Catcher(FailureKind.Engine, FailureLevel.Warning) { Keeps = 2 };
+        using var forgetful = new Catcher(FailureKind.Engine, FailureLevel.Warning) { Keeps = 0 };
+
+        for (var i = 0; i < 5; i++)
+        {
+            catcher.Report($"failure {i}");
+            forgetful.Report($"failure {i}");
+        }
+
+        catcher.FailureCount.Should().Be(5);
+        catcher.Failures.Select(failure => failure.Message).Should().Equal("failure 3", "failure 4");
+        forgetful.HasFailed.Should().BeTrue();
+        forgetful.Failures.Should().BeEmpty();
+        var negative = () => new Catcher { Keeps = -1 };
+        negative.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
     public void Guard_NeverThrows_AndGivesTheFailure()
     {
         using var catcher = new Catcher(FailureKind.Engine, FailureLevel.CriticalError);

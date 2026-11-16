@@ -39,8 +39,7 @@ public sealed class Game(RuntimeConfiguration configuration)
         };
     }
 
-    public void Update<TContext>(ref readonly TContext context)
-        where TContext : IFrameContext, allows ref struct
+    public void Update(in FrameContext context)
     {
         _frames++;
         Events.Add($"app:update {context.FrameIndex}");
@@ -52,8 +51,7 @@ public sealed class Game(RuntimeConfiguration configuration)
             _engine?.RequestStop(StopReason.Regular);
     }
 
-    public void Render<TContext>(ref readonly TContext context)
-        where TContext : IFrameContext, allows ref struct
+    public void Render(in FrameContext context)
     {
         Events.Add($"app:render {context.FrameIndex}");
     }

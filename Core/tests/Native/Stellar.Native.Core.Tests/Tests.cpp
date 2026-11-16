@@ -3,6 +3,7 @@
 #include "include/Core/core.h"
 #include "include/Core/core_contracts.h"
 #include "include/PInvoke/exports.h"
+#include "include/Kernel/memory.h"
 
 #include <atomic>
 #include <cstdio>
@@ -17,6 +18,12 @@ using namespace Stellar::Native::Core;
 using namespace Stellar::Native::Core::Data::Collections;
 using namespace Stellar::Native::Core::Data::Registry;
 using namespace Stellar::Native::Core::Modules;
+using Stellar::Native::Core::Memory::Allocator;
+using Stellar::Native::Kernel::Memory::NativeList;
+using Stellar::Native::Kernel::Memory::NativeListLock;
+using Stellar::Native::Kernel::Memory::NativeListReadScope;
+using Stellar::Native::Kernel::Memory::NativeListView;
+using Stellar::Native::Kernel::Memory::NativeListWriteScope;
 
 namespace
 {
@@ -425,6 +432,157 @@ namespace
     }
 }
 
+namespace
+{
+    void TestAllocator()
+    {
+        const auto allocator = Allocator::Create();
+        CHECK(allocator && allocator->References() == 1);
+
+        auto block = allocator->Allocate(100, 64);
+        CHECK(block && reinterpret_cast<uintptr_t>(block.get()) % 64 == 0);
+        CHECK(allocator->References() == 2);
+        CHECK(allocator->GetStats().allocatedBytes == 100 && allocator->GetStats().liveAllocations == 1);
+
+        block = allocator->Reallocate(block, 100, 1000, 64);
+        CHECK(block && allocator->GetStats().allocatedBytes == 1000 && allocator->GetStats().peakBytes == 1000);
+
+        CHECK(!allocator->Allocate(0, 16));
+        CHECK(!allocator->Allocate(16, 3));
+
+        // A block keeps its allocator alive after its maker lets it go
+        allocator->Release();
+        CHECK(allocator->References() == 1);
+        allocator->Free(block, 1000);
+
+        // The same through the table of the ABI
+        Link<const StellarMemoryApi> api = Allocator::Api();
+        CHECK(api.structSize == sizeof(StellarMemoryApi));
+        CHECK(api.contract.major == STELLAR_MEMORY_CONTRACT_MAJOR);
+
+        StellarAllocator* abi = api.create();
+        void* memory = api.allocate(abi, 32, 16);
+        StellarMemoryStats stats{};
+        api.getStats(abi, &stats);
+        CHECK(memory && stats.liveAllocations == 1 && stats.totalAllocations == 1);
+        api.free(abi, memory, 32);
+        api.getStats(abi, &stats);
+        CHECK(stats.liveAllocations == 0 && stats.allocatedBytes == 0);
+        api.release(abi);
+
+        // A context has its allocator, apart from the others
+        CoreContext first;
+        CoreContext second;
+        CHECK(&first.Allocator() != &second.Allocator());
+        CHECK(&first.Allocator() != &CoreContext::Default().Allocator());
+    }
+
+    struct Particle
+    {
+        float x;
+        float life;
+    };
+
+    void TestNativeList()
+    {
+        const auto allocator = Allocator::Create();
+        {
+            NativeList<Particle> list(allocator->ToAbi(), Allocator::Api());
+            auto view = list.View();
+            CHECK(NativeListView<Particle>::IsOf(list.Header()));
+            CHECK(!NativeListView<int32_t>::IsOf(list.Header()));
+
+            for (int i = 0; i < 100; ++i)
+                CHECK(view.Add(Particle{static_cast<float>(i), 1.0f}));
+
+            CHECK(view.Count() == 100 && view.Capacity() >= 100);
+            CHECK(reinterpret_cast<uintptr_t>(list.Header().data) % 16 == 0);
+
+            view.RemoveAtSwapBack(0);
+            CHECK(view.Count() == 99 && view.Items()[0].x == 99.0f);
+
+            for (auto& particle : view.Items())
+                particle.life -= 0.5f;
+            CHECK(view.Items()[10].life == 0.5f);
+
+            view.Clear();
+            CHECK(view.Count() == 0);
+            CHECK(allocator->GetStats().liveAllocations == 1);
+        }
+
+        CHECK(allocator->GetStats().liveAllocations == 0);
+        CHECK(allocator->References() == 1);
+        allocator->Release();
+    }
+
+    void TestNativeListLock()
+    {
+        const auto allocator = Allocator::Create();
+        NativeList<int64_t> list(allocator->ToAbi(), Allocator::Api());
+        std::atomic<int> torn{0};
+        std::atomic<bool> done{false};
+
+        // Pairs go in under the write lock; a reader must never see half of one
+        std::thread reader([&]
+        {
+            while (!done.load())
+            {
+                NativeListReadScope scope(list.Header());
+                if (list.Header().count % 2 != 0)
+                    ++torn;
+            }
+        });
+
+        std::vector<std::thread> writers;
+        for (int w = 0; w < 4; ++w)
+            writers.emplace_back([&]
+            {
+                for (int i = 0; i < 5000; ++i)
+                {
+                    NativeListWriteScope scope(list.Header());
+                    auto view = list.View();
+                    (void)view.Add(i);
+                    (void)view.Add(-i);
+                }
+            });
+
+        for (auto& writer : writers)
+            writer.join();
+        done = true;
+        reader.join();
+
+        CHECK(torn.load() == 0);
+        CHECK(list.Header().count == 40000);
+        CHECK(list.Header().lock == 0);
+        allocator->Release();
+    }
+
+    void TestMemoryExports()
+    {
+        Ptr<const StellarMemoryApi> api;
+        CHECK(stellar_memory_get_api(&api) == STELLAR_RESULT_OK && api.get() == &Allocator::Api());
+        CHECK(stellar_memory_get_api(nullptr) == STELLAR_RESULT_INVALID_ARGUMENT);
+
+        Ptr<StellarCoreContext> context;
+        CHECK(stellar_core_context_create(&context) == STELLAR_RESULT_OK);
+
+        Ptr<StellarAllocator> allocator;
+        CHECK(stellar_core_context_get_allocator(context, &allocator) == STELLAR_RESULT_OK && allocator);
+
+        Ptr<StellarAllocator> fallback;
+        CHECK(stellar_core_context_get_allocator(nullptr, &fallback) == STELLAR_RESULT_OK);
+        CHECK(fallback.get() == CoreContext::Default().Allocator().ToAbi().get());
+
+        // A block outlives the context it came from: the allocator waits for it
+        void* block = api->allocate(allocator.get(), 64, 16);
+        CHECK(stellar_core_context_destroy(context) == STELLAR_RESULT_OK);
+        StellarMemoryStats stats{};
+        api->getStats(allocator.get(), &stats);
+        CHECK(stats.liveAllocations == 1);
+        api->free(allocator.get(), block, 64);
+    }
+}
+
 int main(int, char* argv[])
 {
     const auto directory = std::filesystem::absolute(argv[0]).parent_path();
@@ -439,6 +597,10 @@ int main(int, char* argv[])
     TestExports((directory / "Stellar.Native.TestModule.dll").string());
     TestModuleContract();
     TestContexts();
+    TestAllocator();
+    TestNativeList();
+    TestNativeListLock();
+    TestMemoryExports();
 
     std::printf("%d checks, %d failed\n", checks, failures);
     return failures == 0 ? 0 : 1;

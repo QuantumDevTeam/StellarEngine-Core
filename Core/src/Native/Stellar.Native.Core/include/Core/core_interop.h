@@ -13,6 +13,7 @@
 #include "Identifier.h"
 #include "Label.h"
 
+#include "Memory/Allocator.h"
 
 #include "Failures/NativeException.h"
 #include "Failures/Guard.h"

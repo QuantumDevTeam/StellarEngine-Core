@@ -30,7 +30,7 @@
 #define STELLAR_PINVOKE_ABI_MAJOR 3u
 
 /// @brief Minor version of these exports.
-#define STELLAR_PINVOKE_ABI_MINOR 0u
+#define STELLAR_PINVOKE_ABI_MINOR 1u
 
 /// @brief The registries of one engine: an opaque Stellar::Native::Core::CoreContext.
 using StellarCoreContext = struct StellarCoreContext;
@@ -54,7 +54,14 @@ STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_create(Ptr<Ste
 STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_parse(StellarStringView text, Ptr<StellarUid> identifier, Ptr<int32_t> parsed);
 STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_format(Ptr<const StellarUid> identifier, Ptr<char> buffer, size_t capacity, Ptr<size_t> required);
 
+// Memory (since 3.1)
 
+/// @brief Gets the functions of the allocators (Abi/Memory.h). They are called directly, not through exports: a
+/// block is given and freed without a P/Invoke stub.
+STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_memory_get_api(Ptr<Ptr<const StellarMemoryApi>> api);
+
+/// @brief Gets the allocator of a context, without a reference: acquire it to keep it.
+STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_core_context_get_allocator(Ptr<StellarCoreContext> context, Ptr<Ptr<StellarAllocator>> allocator);
 
 // Modules
 

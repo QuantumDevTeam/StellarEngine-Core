@@ -19,6 +19,7 @@ public sealed unsafe class CoreContext
     private static readonly ConditionalWeakTable<IEngineInstance, CoreContext> Engines = new();
 
     private nint _handle;
+    private NativeAllocator? _allocator;
     private readonly bool _owned;
 
     private CoreContext(nint handle, bool owned)
@@ -55,6 +56,14 @@ public sealed unsafe class CoreContext
     /// <summary>Gets the registry of native modules.</summary>
     public ModuleRegistry Modules { get; }
 
+    /// <summary>
+    /// Gets the allocator of the engine, made on first use. It outlives the context while blocks it gave are not
+    /// freed.
+    /// </summary>
+    public NativeAllocator Allocator =>
+        _allocator ?? Interlocked.CompareExchange(ref _allocator, new NativeAllocator(AllocatorOf(Handle), adopt: false), null)
+        ?? _allocator;
+
     /// <summary>The handle the exports take; 0 for the default context.</summary>
     internal nint Handle => IsDisposed ? throw new ObjectDisposedException(nameof(CoreContext)) : _handle;
 
@@ -84,6 +93,13 @@ public sealed unsafe class CoreContext
     {
         Destroy();
         GC.SuppressFinalize(this);
+    }
+
+    private static nint AllocatorOf(nint context)
+    {
+        nint allocator;
+        Exports.Check(Exports.stellar_core_context_get_allocator(context, &allocator));
+        return allocator;
     }
 
     private static nint Create()

@@ -39,10 +39,12 @@ The native core therefore has two surfaces:
 | `Identifier` | 16 bytes, the layout of `Stellar.Kernel.Identifier`: a value, never registered |
 | `Label` | an identifier and a name, a value: there is no registry of labels |
 | `Modules::ModuleRegistry` | loaded native modules, by handle |
+| `Memory::Allocator` | native memory: gives blocks, takes them back, counts them |
 
 ## Contexts
 
-The registries are not global: a `CoreContext` owns one of each, and every engine instance has its own. Two engines in
+The registries are not global: a `CoreContext` owns one of each, and an allocator, and every engine instance has its
+own. Two engines in
 one process (an editor and the game it runs) load native modules without seeing each other, and destroying a context
 takes its registries with it, unloading its native modules.
 
@@ -61,6 +63,33 @@ it. Stellar.Core does both through `CoreEngine`.
 `StellarUid`: it crosses the boundary as it is, through both wrappers. What is inside is hidden on both sides: code
 makes (`Identifier.New()`), compares, writes and reads identifiers (`ToString`, `Parse`, `ToBytes`). The text form is
 the same in C# and C++. An identifier is never registered: registries hold objects by their identifiers.
+
+## Native memory
+
+Objects cross the boundary as handles; memory that both sides work on crosses as itself. `Abi/Memory.h` defines both
+halves:
+
+- **Allocators.** `StellarAllocator`, counted by references, and `StellarMemoryApi`, the table of its functions: make,
+  acquire, release, allocate, reallocate, free, stats. Every engine has one in its context
+  (`CoreContext.Allocator`, `CoreContext::Allocator()`); anything may make one of its own (`new NativeAllocator()`) to
+  count its memory apart. Each block not freed yet holds a reference, so memory freed after its engine is gone still
+  finds its allocator, and what an engine leaked is in its stats (`NativeAllocator.Stats`). A block is freed by the
+  allocator that gave it, so a native module built against another C runtime never frees what it did not allocate.
+- **Native lists.** `StellarNativeList`: a header in native memory, with the buffer, the count, the capacity, the size of
+  an element, a version and a lock. The same header is a `NativeList<T>` or a `ConcurrentNativeList<T>` in C#
+  (`Stellar.Core.Memory`, `Pointer` gives the header) and a `NativeListView<T>` in C++ (`include/Kernel/memory.h`,
+  header-only, over the ABI alone, so a native module needs nothing more). Nothing is copied either way.
+
+| | `NativeList<T>` | `ConcurrentNativeList<T>` |
+|---|---|---|
+| Threads | one owner at a time | any, and native code |
+| Lock | none | in the header: many readers or one writer, a waiting writer goes first |
+| Work on the elements | `AsSpan()`, `this[i]` by reference, `foreach (ref var x in list)` | `Read()` and `Write()` scopes with a span; single calls take the lock themselves |
+
+C# and C++ take the lock of a concurrent list the same way (`NativeListLock` on both sides), so a list filled in C# is
+read in C++ under the same lock. The lock is not reentrant, and a span is valid while its scope is held and the list does
+not grow. The managed wrapper calls the allocators through the table, not through P/Invoke stubs; the C++/CLI wrapper
+calls the C++ class.
 
 ## Wrappers
 
@@ -127,6 +156,9 @@ Used by the P/Invoke exports and by native modules.
 | `StellarUid` | `System.Guid` | 16 |
 | `StellarHandle` | `Stellar.Kernel.Interop.NativeHandle` | 8 |
 | `StellarResult` | `Stellar.Kernel.Interop.NativeResult` | 4 |
+| `StellarMemoryStats` (`Abi/Memory.h`) | `Stellar.Kernel.Interop.NativeMemoryStats` | 32 |
+| `StellarNativeList` (`Abi/Memory.h`) | the header of `Stellar.Core.Memory.NativeList<T>` | 40 |
+| `StellarProfilerEvent` (`Abi/Profiling.h`) | `Stellar.Kernel.Profiling.ProfilerEvent` | 24 |
 
 `Stellar::Native::Core::Identifier` has the memory layout of `StellarUid`, of a Windows `GUID` and of `System.Guid`, so
 identifiers cross the boundary with no conversion. Note that the first three groups of a GUID are little-endian
@@ -146,8 +178,9 @@ the required one. There are two separate contracts:
 
 | Contract | Defined in | Between |
 |---|---|---|
-| P/Invoke exports (2.0: every registry call takes a context) | `include/PInvoke/exports.h` | `Stellar.Native.Core.Wrapper.Managed` and `.PInvoke` |
+| P/Invoke exports (3.1: the memory table and the allocator of a context) | `include/PInvoke/exports.h` | `Stellar.Native.Core.Wrapper.Managed` and `.PInvoke` |
 | Module contract | `Abi/Module.h` | The engine and a native module |
+| Memory contract | `Abi/Memory.h` | The core and whoever calls its allocators: the managed wrapper, native modules |
 
 `NativeCore.EnsureAvailable` checks the first one, `ModuleRegistry` the second. The C++/CLI wrapper has no flat contract
 to check: it is compiled against the headers of the core it calls.

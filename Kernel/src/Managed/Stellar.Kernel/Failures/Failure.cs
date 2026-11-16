@@ -17,8 +17,8 @@ namespace Stellar.Kernel.Failures;
 /// </remarks>
 public sealed class Failure
 {
-    private readonly object _sync = new();
-    private int _reported;
+    // 0 not reported, 1 being marked, 2 reported
+    private int _state;
     private FailureReaction _reaction;
 
     /// <summary>
@@ -66,7 +66,7 @@ public sealed class Failure
     public DateTime TimeUtc { get; } = DateTime.UtcNow;
 
     /// <summary>Gets whether it was reported.</summary>
-    public bool IsReported => Volatile.Read(ref _reported) != 0;
+    public bool IsReported => Volatile.Read(ref _state) == 2;
 
     /// <summary>Gets what was done about it; <c>null</c> until it is reported.</summary>
     public FailureReaction? Reaction => IsReported ? _reaction : null;
@@ -98,14 +98,17 @@ public sealed class Failure
     /// <returns><c>true</c> if this call reported it; <c>false</c> if it was reported already.</returns>
     public bool MarkReported(FailureReaction reaction)
     {
-        lock (_sync)
+        if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
         {
-            if (_reported != 0) return false;
-
-            _reaction = reaction;
-            Volatile.Write(ref _reported, 1);
-            return true;
+            // Another thread is marking it: its reaction is the one, and it is there in a moment
+            var spin = new SpinWait();
+            while (Volatile.Read(ref _state) != 2) spin.SpinOnce();
+            return false;
         }
+
+        _reaction = reaction;
+        Volatile.Write(ref _state, 2);
+        return true;
     }
 
     /// <inheritdoc/>

@@ -13,6 +13,8 @@ namespace Stellar::Core::Modules
 
 namespace Stellar::Core::Native
 {
+    ref class NativeAllocator;
+
     using namespace System;
     using namespace System::Runtime::CompilerServices;
 
@@ -34,6 +36,7 @@ namespace Stellar::Core::Native
         nc::CoreContext* _native;
         bool _owned;
         ::Stellar::Core::Modules::ModuleRegistry^ _modules;
+        NativeAllocator^ _allocator;
 
         CoreContext(nc::CoreContext* native, bool owned);
 
@@ -66,6 +69,12 @@ namespace Stellar::Core::Native
 
         /// <summary>Gets the registry of native modules.</summary>
         property ::Stellar::Core::Modules::ModuleRegistry^ Modules { ::Stellar::Core::Modules::ModuleRegistry^ get(); }
+
+        /// <summary>
+        /// Gets the allocator of the engine, made on first use. It outlives the context while blocks it gave are not
+        /// freed.
+        /// </summary>
+        property NativeAllocator^ Allocator { NativeAllocator^ get(); }
 
     internal:
         nc::CoreContext& Native();

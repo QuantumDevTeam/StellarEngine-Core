@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace Stellar.Core.Data.Collections;
 
@@ -20,8 +21,13 @@ public class ConcurrentMap<TKey, TValue>
     : IReadOnlyCollection<KeyValuePair<TKey, TValue>>
     where TKey : notnull
 {
+    // Whether a type of map brings keys to a form: a lookup in one that does not takes no virtual call and no try
+    private static readonly ConcurrentDictionary<Type, bool> NormalizingTypes = new();
+
     private readonly ConcurrentDictionary<TKey, TValue> _items;
-    private readonly SnapshotCache<KeyValuePair<TKey, TValue>> _snapshot = new();
+    private readonly bool _normalizes;
+    private int _version;
+    private volatile View? _view;
 
     /// <summary>
     /// Makes an empty map.
@@ -30,6 +36,9 @@ public class ConcurrentMap<TKey, TValue>
     public ConcurrentMap(IEqualityComparer<TKey>? comparer = null)
     {
         _items = new ConcurrentDictionary<TKey, TValue>(comparer ?? EqualityComparer<TKey>.Default);
+        _normalizes = GetType() != typeof(ConcurrentMap<TKey, TValue>) && NormalizingTypes.GetOrAdd(GetType(),
+            static type => type.GetMethod(nameof(NormalizeKey), BindingFlags.Instance | BindingFlags.NonPublic, [typeof(TKey)])!
+                .DeclaringType != typeof(ConcurrentMap<TKey, TValue>));
     }
 
     /// <summary>
@@ -48,17 +57,17 @@ public class ConcurrentMap<TKey, TValue>
     /// <summary>
     /// Gets the pairs as they are now: one array, shared until the map changes. Do not change it.
     /// </summary>
-    public IReadOnlyList<KeyValuePair<TKey, TValue>> Snapshot => _snapshot.Get(() => _items.ToArray());
+    public IReadOnlyList<KeyValuePair<TKey, TValue>> Snapshot => CurrentView().Pairs;
 
     /// <summary>
-    /// Gets a snapshot of the keys.
+    /// Gets the keys as they are now: one array, shared until the map changes.
     /// </summary>
-    public IReadOnlyCollection<TKey> Keys => Snapshot.Select(pair => pair.Key).ToArray();
+    public IReadOnlyCollection<TKey> Keys => CurrentView().Keys;
 
     /// <summary>
-    /// Gets a snapshot of the values.
+    /// Gets the values as they are now: one array, shared until the map changes.
     /// </summary>
-    public IReadOnlyCollection<TValue> Values => Snapshot.Select(pair => pair.Value).ToArray();
+    public IReadOnlyCollection<TValue> Values => CurrentView().Values;
 
     /// <summary>
     /// Gets whether the map has a value for a key.
@@ -195,9 +204,22 @@ public class ConcurrentMap<TKey, TValue>
     /// <summary>
     /// Enumerates the pairs as they were when the enumeration started.
     /// </summary>
-    public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
+    public SnapshotEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
     {
-        return Snapshot.GetEnumerator();
+        return new SnapshotEnumerator<KeyValuePair<TKey, TValue>>(CurrentView().Pairs);
+    }
+
+    /// <summary>
+    /// Enumerates the values as they were when the enumeration started.
+    /// </summary>
+    public SnapshotEnumerator<TValue> EnumerateValues()
+    {
+        return new SnapshotEnumerator<TValue>(CurrentView().Values);
+    }
+
+    IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -239,13 +261,31 @@ public class ConcurrentMap<TKey, TValue>
 
     private void OnChanged(MapChange<TKey, TValue> change)
     {
-        _snapshot.Invalidate();
+        Interlocked.Increment(ref _version);
         Changed?.Invoke(change);
+    }
+
+    // Built after reading the version: a change in between only makes the next reader build again
+    private View CurrentView()
+    {
+        var version = Volatile.Read(ref _version);
+        var view = _view;
+        if (view is not null && view.Version == version) return view;
+
+        view = new View(version, _items.ToArray());
+        _view = view;
+        return view;
     }
 
     // A key that cannot be held has no value: lookups answer no instead of throwing
     private bool TryNormalize(TKey key, [MaybeNullWhen(false)] out TKey normalized)
     {
+        if (!_normalizes)
+        {
+            normalized = key;
+            return key is not null;
+        }
+
         try
         {
             normalized = NormalizeKey(key);
@@ -255,6 +295,31 @@ public class ConcurrentMap<TKey, TValue>
         {
             normalized = default;
             return false;
+        }
+    }
+
+    // The map at one version: the pairs, and the keys and the values made from them when first asked for
+    private sealed class View(int version, KeyValuePair<TKey, TValue>[] pairs)
+    {
+        private TKey[]? _keys;
+        private TValue[]? _values;
+
+        public int Version { get; } = version;
+
+        public KeyValuePair<TKey, TValue>[] Pairs { get; } = pairs;
+
+        // Two readers may both make them: either array is right
+        public TKey[] Keys => _keys ??= Project(Pairs, static pair => pair.Key);
+
+        public TValue[] Values => _values ??= Project(Pairs, static pair => pair.Value);
+
+        private static T[] Project<T>(KeyValuePair<TKey, TValue>[] pairs, Func<KeyValuePair<TKey, TValue>, T> part)
+        {
+            if (pairs.Length == 0) return [];
+
+            var items = new T[pairs.Length];
+            for (var i = 0; i < pairs.Length; i++) items[i] = part(pairs[i]);
+            return items;
         }
     }
 }

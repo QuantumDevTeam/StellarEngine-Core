@@ -1,11 +1,11 @@
-using Stellar.Kernel.Lifecycle;
 using Stellar.Kernel.Quantization;
 using Stellar.Kernel.Timing;
 
-namespace Stellar.Runtime.Loop;
+namespace Stellar.Kernel.Lifecycle;
 
 /// <summary>
-/// What a participant of a main loop gets in a phase.
+/// What a participant of a main loop gets in a phase. One concrete type, passed by reference: a call of a phase is a
+/// plain interface call, not a generic one, which the loop makes for every participant of every frame.
 /// </summary>
 /// <param name="loop">The loop.</param>
 /// <param name="phase">The phase.</param>

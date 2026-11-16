@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Stellar.Core.Data.Collections;
 using Stellar.Kernel;
 using Stellar.Kernel.Data.Registry;
 using Stellar.Kernel.Quantization;
@@ -18,6 +19,17 @@ public sealed class Registry<T>
     where T : class, IRegistrableQuantumObject
 {
     private readonly ConcurrentDictionary<Identifier, T> _items = new();
+    private readonly SnapshotCache<Identifier> _keys;
+    private readonly SnapshotCache<T> _values;
+
+    /// <summary>
+    /// Makes an empty registry.
+    /// </summary>
+    public Registry()
+    {
+        _keys = new SnapshotCache<Identifier>(() => [.. _items.Keys]);
+        _values = new SnapshotCache<T>(() => [.. _items.Values]);
+    }
 
     /// <inheritdoc/>
     public Type ItemType => typeof(T);
@@ -26,10 +38,10 @@ public sealed class Registry<T>
     public int Size => _items.Count;
 
     /// <inheritdoc/>
-    public ICollection<Identifier> Keys => _items.Keys.ToArray();
+    public ICollection<Identifier> Keys => _keys.Get();
 
     /// <inheritdoc/>
-    public ICollection<T> Values => _items.Values.ToArray();
+    public ICollection<T> Values => _values.Get();
 
     /// <inheritdoc/>
     public bool Register(T item)
@@ -38,6 +50,7 @@ public sealed class Registry<T>
         if (item.UID.IsEmpty) throw new ArgumentException("An object without an identifier cannot be registered", nameof(item));
         if (!_items.TryAdd(item.UID, item)) return false;
 
+        Changed();
         item.Registrations.OnRegistered(this);
         return true;
     }
@@ -66,6 +79,7 @@ public sealed class Registry<T>
     {
         if (!_items.TryRemove(id, out var item)) return null;
 
+        Changed();
         item.Registrations.OnUnregistered(this);
         return item;
     }
@@ -86,6 +100,12 @@ public sealed class Registry<T>
     public override string ToString()
     {
         return $"Registry of {typeof(T).Name} ({Size})";
+    }
+
+    private void Changed()
+    {
+        _keys.Invalidate();
+        _values.Invalidate();
     }
 }
 

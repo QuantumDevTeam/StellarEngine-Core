@@ -156,11 +156,13 @@ Every frame of a loop:
 3. the clocks, read once: every participant gets the step of its own clock,
 4. the timers that are due,
 5. `PreUpdate`, `FixedUpdate` (once per fixed step of the clock, at most `MaxFixedSteps`), `Update`, `PostUpdate`,
-   `PreRender`, `Render`, `PostRender`, for the participants of each, skipping those whose clock is paused,
+   `PreRender`, `Render`, `PostRender`, for the participants of each, skipping those whose clock is paused. A
+   participant is not called for a phase it has only the empty default of (`PreUpdate`, `PostUpdate`, `PreRender`,
+   `PostRender`),
 6. the loops attached to this one,
 7. the wait for the next frame, if the frame rate is limited. Posted work runs meanwhile.
 
-`IFrameContext` gives the phase, the frame, the clock of the participant, its time and its step (`DeltaTime`),
+A phase gets a `FrameContext` (`in`): the phase, the frame, the clock of the participant, its time and its step (`DeltaTime`),
 and the real step (`UnscaledDeltaTime`). An entry point that is `IUpdatable`, `IFixedUpdatable` or `IRenderable` joins
 the primary loop when it starts and leaves it when it stops. Adding, removing, scheduling and pausing are safe from any
 thread. `Pause()` skips the phases and keeps the frames, and posted work still runs.
@@ -214,9 +216,33 @@ The runtime catches with the same catchers (`RuntimeCatchers`), one per level, f
 | `Engine` | The run around the main loop, the stops | Fatal |
 | `MainLoop` | One call of one participant in one phase | Reported: the failure system decides |
 
+The runtime catchers keep the last 16 failures (`Catcher.Keeps`): a failure that repeats on every frame costs no memory.
+
 Before Stellar.Core is up, a failure is written to the log of the runtime, and in the main loop the loop goes on. Once it
 is, what the runtime catches goes to the failure system like any other failure; what the engine does not log is still
 written to the log of the runtime.
+
+## Profiling
+
+The profiler is a module; the engine is ready for it. `Stellar.Kernel.Profiling` gives what code marks and what a
+profiler implements:
+
+- `ProfilerMarker`, made once in a static field, marks a span: `using (Step.Auto()) Simulate(delta);`.
+  `ProfilerCounter` follows a value, `Instant` marks a moment. Names are numbered once for the process
+  (`ProfilerMarkers`); categories (`ProfilerCategory`) are an open set, as the kinds of failures are.
+- `IProfilerSession` is a recording of one engine: the module makes it and attaches it (`Profiler.Attach(engine,
+  session)`); the engine writes `ProfilerEvent`s into it, on the thread of the work. An editor records the game it runs,
+  not itself. Code outside any engine has a session of its own, attached for `null`.
+- `ProfilerEvent` is 24 bytes, blittable, `StellarProfilerEvent` of `Abi/Profiling.h`: a session keeps the events of
+  each thread in a native list, and native code writes the same events into the same lists, on the same clock
+  (`Stopwatch.GetTimestamp`).
+
+While nothing is recorded, a marker costs one check and the loop reads the session once a frame. What the runtime marks:
+
+| Detail | Marks |
+|---|---|
+| `Frames` | each frame of each loop (a `Frame` event with its index, and a span), its phases, timers and posted work, the stages; counters a frame: bytes allocated by the loop thread, collections of generation 0 |
+| `Participants` | also every call of every participant, under the name of its type: about 17 ns an event, so for a while, not always |
 
 ## Threads
 

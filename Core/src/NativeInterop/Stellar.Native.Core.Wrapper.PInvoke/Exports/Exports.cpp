@@ -127,6 +127,24 @@ StellarResult STELLAR_CALL stellar_identifier_format(Ptr<const StellarUid> ident
     return Guard([&] { return CopyText(ToIdentifier(identifier).ToString(), buffer, capacity, required); });
 }
 
+// Memory
+
+StellarResult STELLAR_CALL stellar_memory_get_api(Ptr<Ptr<const StellarMemoryApi>> api)
+{
+    STELLAR_REQUIRE(api)
+
+    *api = &Memory::Allocator::Api();
+    return STELLAR_RESULT_OK;
+}
+
+StellarResult STELLAR_CALL stellar_core_context_get_allocator(Ptr<StellarCoreContext> context, Ptr<Ptr<StellarAllocator>> allocator)
+{
+    STELLAR_REQUIRE(allocator)
+
+    *allocator = ContextOf(context).Allocator().ToAbi();
+    return STELLAR_RESULT_OK;
+}
+
 // Modules
 
 StellarResult STELLAR_CALL stellar_module_load(Ptr<StellarCoreContext> context, StellarStringView path, Ptr<StellarHandle> module)

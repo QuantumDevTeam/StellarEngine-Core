@@ -43,6 +43,7 @@
         <ClInclude Include="Data\**\*.h"/>
         <ClInclude Include="Data\**\*.inl"/>
         <ClInclude Include="Failures\**\*.h"/>
+        <ClInclude Include="Memory\**\*.h"/>
         <ClInclude Include="Mixins\**\*.h"/>
         <ClInclude Include="Modules\**\*.h"/>
         <ClInclude Include="include\Core\*.h"/>
@@ -62,6 +63,7 @@
         </ClCompile>
         <ClCompile Include="Failures\LastError.cpp"/>
         <ClCompile Include="CoreContext.cpp"/>
+        <ClCompile Include="Memory\Allocator.cpp"/>
         <ClCompile Include="Identifier.cpp"/>
         <ClCompile Include="Label.cpp"/>
         <ClCompile Include="Modules\ModuleRegistry.cpp"/>

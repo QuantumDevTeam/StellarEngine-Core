@@ -18,8 +18,7 @@ public sealed class EntryPoint(RuntimeConfiguration configuration)
         return 0;
     }
 
-    public void Update<TContext>(ref readonly TContext context)
-        where TContext : IFrameContext, allows ref struct
+    public void Update(in FrameContext context)
     {
     }
 

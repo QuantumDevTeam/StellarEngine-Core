@@ -17,7 +17,10 @@ namespace Stellar.Runtime.Failures;
 /// </remarks>
 public sealed class RuntimeCatchers
 {
-    private readonly Dictionary<CatchLevel, Catcher> _catchers;
+    // Failures that repeat on every frame must cost no memory: the catchers keep the last few
+    private const int Kept = 16;
+
+    private readonly Catcher[] _catchers;
     private readonly RuntimeLog _log;
     private readonly Func<IFailureSystem?> _system;
     private readonly Func<bool> _engineLogs;
@@ -33,8 +36,11 @@ public sealed class RuntimeCatchers
         _log = log;
         _system = system;
         _engineLogs = engineLogs;
-        _catchers = Enum.GetValues<CatchLevel>().ToDictionary(level => level,
-            level => new Catcher(Report, FailureKind.Engine, level == CatchLevel.MainLoop ? FailureLevel.Error : FailureLevel.CriticalError));
+        var levels = Enum.GetValues<CatchLevel>();
+        _catchers = new Catcher[levels.Max(level => (int)level) + 1];
+        foreach (var level in levels)
+            _catchers[(int)level] = new Catcher(Report, FailureKind.Engine,
+                level == CatchLevel.MainLoop ? FailureLevel.Error : FailureLevel.CriticalError) { Keeps = Kept };
     }
 
     /// <summary>Gets the catcher of the runtime itself.</summary>
@@ -53,7 +59,7 @@ public sealed class RuntimeCatchers
     /// Gets the catcher of a level.
     /// </summary>
     /// <param name="level">The level.</param>
-    public Catcher this[CatchLevel level] => _catchers[level];
+    public Catcher this[CatchLevel level] => _catchers[(int)level];
 
     /// <summary>
     /// Gets whether the engine must stop because of a failure caught at a level.

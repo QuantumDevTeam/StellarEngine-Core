@@ -17,7 +17,7 @@ public sealed class ConcurrentSet<T>
     where T : notnull
 {
     private readonly ConcurrentDictionary<T, byte> _items;
-    private readonly SnapshotCache<T> _snapshot = new();
+    private readonly SnapshotCache<T> _snapshot;
 
     /// <summary>
     /// Makes a set.
@@ -28,6 +28,7 @@ public sealed class ConcurrentSet<T>
     {
         Comparer = comparer ?? EqualityComparer<T>.Default;
         _items = new ConcurrentDictionary<T, byte>(Comparer);
+        _snapshot = new SnapshotCache<T>(() => _items.Keys.ToArray());
         if (items is not null)
             foreach (var item in items) _items.TryAdd(item, 0);
     }
@@ -48,7 +49,7 @@ public sealed class ConcurrentSet<T>
     /// <summary>
     /// Gets the items as they are now: one array, shared until the set changes. Do not change it.
     /// </summary>
-    public IReadOnlyList<T> Snapshot => _snapshot.Get(() => _items.Keys.ToArray());
+    public IReadOnlyList<T> Snapshot => _snapshot.Get();
 
     /// <summary>
     /// Adds an item.
@@ -164,9 +165,14 @@ public sealed class ConcurrentSet<T>
     /// <summary>
     /// Enumerates the items as they were when the enumeration started.
     /// </summary>
-    public IEnumerator<T> GetEnumerator()
+    public SnapshotEnumerator<T> GetEnumerator()
     {
-        return Snapshot.GetEnumerator();
+        return new SnapshotEnumerator<T>(_snapshot.Get());
+    }
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()

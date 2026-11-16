@@ -43,10 +43,11 @@ public readonly struct Identifier
     public bool IsEmpty => _value == Guid.Empty;
 
     /// <summary>
-    /// Makes a new identifier, different from every other.
+    /// Makes a new identifier, different from every other: 122 random bits from the random source of the system, as a
+    /// version 4 UUID.
     /// </summary>
     /// <returns>The identifier.</returns>
-    public static Identifier New() => new(Guid.NewGuid());
+    public static Identifier New() => new(IdentifierSource.Next());
 
     /// <summary>
     /// Reads an identifier from its text form.

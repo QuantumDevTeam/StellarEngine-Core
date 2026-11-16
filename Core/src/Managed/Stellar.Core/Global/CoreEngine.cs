@@ -141,6 +141,9 @@ public sealed class CoreEngine
     {
         private readonly ConcurrentDictionary<Type, IRegistry> _registries = new();
 
+        // The registries an object of a type goes to, worked out once per type: registries are never taken away
+        private readonly ConcurrentDictionary<(Type Item, Type? Home), IUntypedRegistry[]> _routes = new();
+
         internal CoreRegistries()
         {
         }
@@ -163,6 +166,9 @@ public sealed class CoreEngine
         /// <param name="type">The type: a base class or a contract of registrable objects.</param>
         public IRegistry Of(Type type)
         {
+            ArgumentNullException.ThrowIfNull(type);
+            if (_registries.TryGetValue(type, out var registry)) return registry;
+
             RegistryTypes.Validate(type);
             return _registries.GetOrAdd(type, static type =>
                 (IRegistry)Activator.CreateInstance(typeof(Registry<>).MakeGenericType(type))!);
@@ -178,10 +184,20 @@ public sealed class CoreEngine
         {
             ArgumentNullException.ThrowIfNull(item);
 
-            if (home is not null) ((IUntypedRegistry)Of(home)).Register(item);
-            foreach (var type in RegistryTypes.MarkedIn(item.GetType()))
+            var route = _routes.GetOrAdd((item.GetType(), home),
+                static (key, registries) => registries.Route(key.Item, key.Home), this);
+            foreach (var registry in route) registry.Register(item);
+        }
+
+        private IUntypedRegistry[] Route(Type item, Type? home)
+        {
+            var route = new List<IUntypedRegistry>();
+            if (home is not null) route.Add((IUntypedRegistry)Of(home));
+            foreach (var type in RegistryTypes.MarkedIn(item))
                 if (type != home)
-                    ((IUntypedRegistry)Of(type)).Register(item);
+                    route.Add((IUntypedRegistry)Of(type));
+
+            return [.. route];
         }
     }
 }

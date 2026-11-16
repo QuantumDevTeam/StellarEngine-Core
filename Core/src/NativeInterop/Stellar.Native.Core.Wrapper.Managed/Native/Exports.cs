@@ -113,6 +113,14 @@ internal static unsafe partial class Exports
     internal static partial NativeResult stellar_identifier_format(Identifier* identifier, byte* buffer, nuint capacity,
         nuint* required);
 
+    // Memory
+
+    [LibraryImport(Library)]
+    internal static partial NativeResult stellar_memory_get_api(MemoryFunctions.Table** api);
+
+    [LibraryImport(Library)]
+    internal static partial NativeResult stellar_core_context_get_allocator(nint context, nint* allocator);
+
     // Modules
 
     [LibraryImport(Library)]

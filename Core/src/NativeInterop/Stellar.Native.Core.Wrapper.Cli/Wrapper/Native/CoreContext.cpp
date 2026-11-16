@@ -1,5 +1,6 @@
 #include "Wrapper/Native/CoreContext.cli.h"
 #include "Wrapper/Modules/ModuleRegistry.cli.h"
+#include "Wrapper/Native/NativeAllocator.cli.h"
 
 using Stellar::Kernel::Lifecycle::EngineScope;
 using Stellar::Kernel::Lifecycle::IEngineInstance;
@@ -62,10 +63,18 @@ namespace Stellar::Core::Native
         return true;
     }
 
-
-
-
     ::Stellar::Core::Modules::ModuleRegistry^ CoreContext::Modules::get() { return _modules; }
+
+    NativeAllocator^ CoreContext::Allocator::get()
+    {
+        if (_allocator == nullptr)
+        {
+            auto allocator = gcnew NativeAllocator(&Native().Allocator(), false);
+            System::Threading::Interlocked::CompareExchange<NativeAllocator^>(_allocator, allocator, nullptr);
+        }
+
+        return _allocator;
+    }
 
     nc::CoreContext& CoreContext::Native()
     {

@@ -42,11 +42,10 @@ public readonly record struct MapChange<TKey, TValue>(ChangeKind Kind, TKey Key,
 /// <summary>
 /// An array that stays valid until the collection changes: built once per change, then shared by every reader.
 /// </summary>
+/// <param name="build">Builds the array from the collection as it is; made once, so a read allocates nothing.</param>
 /// <typeparam name="T">The type of the items.</typeparam>
-internal sealed class SnapshotCache<T>
+internal sealed class SnapshotCache<T>(Func<T[]> build)
 {
-    private sealed record Holder(int Version, T[] Items);
-
     private int _version;
     private volatile Holder? _holder;
 
@@ -61,7 +60,7 @@ internal sealed class SnapshotCache<T>
     /// <summary>
     /// Gets the snapshot, building it if the collection changed since.
     /// </summary>
-    public T[] Get(Func<T[]> build)
+    public T[] Get()
     {
         var version = Volatile.Read(ref _version);
         var holder = _holder;
@@ -71,5 +70,54 @@ internal sealed class SnapshotCache<T>
         var items = build();
         _holder = new Holder(version, items);
         return items;
+    }
+
+    private sealed class Holder(int version, T[] items)
+    {
+        public readonly int Version = version;
+        public readonly T[] Items = items;
+    }
+}
+
+/// <summary>
+/// Enumerates a snapshot of a collection without allocating: what <c>foreach</c> over the collections of the engine uses.
+/// </summary>
+/// <typeparam name="T">The type of the items.</typeparam>
+public struct SnapshotEnumerator<T>
+    : IEnumerator<T>
+{
+    private readonly T[] _items;
+    private int _index;
+
+    internal SnapshotEnumerator(T[] items)
+    {
+        _items = items;
+        _index = -1;
+    }
+
+    /// <inheritdoc/>
+    public readonly T Current => _items[_index];
+
+    readonly object? System.Collections.IEnumerator.Current => Current;
+
+    /// <inheritdoc/>
+    public bool MoveNext()
+    {
+        var next = _index + 1;
+        if (next >= _items.Length) return false;
+
+        _index = next;
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public void Reset()
+    {
+        _index = -1;
+    }
+
+    /// <inheritdoc/>
+    public readonly void Dispose()
+    {
     }
 }

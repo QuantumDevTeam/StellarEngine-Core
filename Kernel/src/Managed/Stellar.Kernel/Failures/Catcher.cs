@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Stellar.Kernel.Lifecycle;
 using Stellar.Kernel.Quantization;
@@ -46,9 +47,12 @@ public sealed class Catcher
 {
     private readonly IFailureSystem? _system;
     private readonly Func<Failure, FailureReaction>? _report;
-    private readonly object _sync = new();
-    private volatile Rule[] _rules = [];
-    private volatile Failure[] _failures = [];
+    private readonly int _keeps = int.MaxValue;
+
+    // Replaced on change, never mutated: readers need no lock, a writer swaps it whole
+    private Rule[] _rules = [];
+    private Failure[] _failures = [];
+    private int _failureCount;
     private volatile bool _disposed;
 
     /// <summary>
@@ -101,11 +105,25 @@ public sealed class Catcher
     /// <summary>Gets the object its failures happen in, if any.</summary>
     public IQuantumObject? Sender { get; }
 
-    /// <summary>Gets the failures it caught, in order.</summary>
-    public IReadOnlyList<Failure> Failures => _failures;
+    /// <summary>
+    /// Gets or sets how many of the last failures <see cref="Failures"/> keeps: all of them by default. A catcher that
+    /// lives long, as those of the runtime, keeps a few, so that a failure that repeats on every frame costs no memory.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown for a negative count.</exception>
+    public int Keeps
+    {
+        get => _keeps;
+        init => _keeps = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(value), "A catcher keeps 0 failures or more");
+    }
+
+    /// <summary>Gets the failures it caught and keeps, in order.</summary>
+    public IReadOnlyList<Failure> Failures => Volatile.Read(ref _failures);
+
+    /// <summary>Gets how many failures it caught, kept or not.</summary>
+    public int FailureCount => Volatile.Read(ref _failureCount);
 
     /// <summary>Gets whether it caught a failure.</summary>
-    public bool HasFailed => _failures.Length > 0;
+    public bool HasFailed => FailureCount > 0;
 
     /// <summary>
     /// Adds a catch block: the exceptions of a type are handled here and not reported. The first block that matches
@@ -334,7 +352,7 @@ public sealed class Catcher
     /// <exception cref="FailureException">Thrown if the catcher caught a failure.</exception>
     public void ThrowIfFailed()
     {
-        var failures = _failures;
+        var failures = Volatile.Read(ref _failures);
         if (failures.Length == 0) return;
 
         var worst = failures.OrderByDescending(failure => failure.Level).First();
@@ -353,7 +371,7 @@ public sealed class Catcher
     private Failure? Handle(Exception exception, string? operation, FailureLevel? level, FailureKind? kind,
         IQuantumObject? sender, FramePhase? phase)
     {
-        foreach (var rule in _rules)
+        foreach (var rule in Volatile.Read(ref _rules))
         {
             if (!rule.Type.IsInstanceOfType(exception)) continue;
             if (rule.Handler is { } handler)
@@ -374,7 +392,8 @@ public sealed class Catcher
     // Each failure is reported once: one caught again by an outer catcher keeps its first reaction
     private void Record(Failure failure)
     {
-        lock (_sync) _failures = [.. _failures, failure];
+        Interlocked.Increment(ref _failureCount);
+        if (_keeps > 0) Keep(failure);
         if (failure.IsReported) return;
 
         FailureReaction reaction;
@@ -397,7 +416,33 @@ public sealed class Catcher
     private void AddRule(Rule rule)
     {
         ThrowIfDisposed();
-        lock (_sync) _rules = [.. _rules, rule];
+        while (true)
+        {
+            var current = Volatile.Read(ref _rules);
+            if (Interlocked.CompareExchange(ref _rules, [.. current, rule], current) == current) return;
+        }
+    }
+
+    // The last ones only, once there are as many as it keeps
+    private void Keep(Failure failure)
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _failures);
+            Failure[] next;
+            if (current.Length < _keeps)
+            {
+                next = [.. current, failure];
+            }
+            else
+            {
+                next = new Failure[_keeps];
+                Array.Copy(current, current.Length - _keeps + 1, next, 0, _keeps - 1);
+                next[_keeps - 1] = failure;
+            }
+
+            if (Interlocked.CompareExchange(ref _failures, next, current) == current) return;
+        }
     }
 
     private void ThrowIfDisposed()

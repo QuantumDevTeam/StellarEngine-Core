@@ -95,6 +95,8 @@ public sealed class MainThreadDispatcher
         if (!IsMainThread)
             throw new InvalidOperationException("The work of the main thread runs on the main thread only");
 
+        if (_queue.IsEmpty) return false;
+
         var mustStop = false;
 
         for (var count = _queue.Count; count > 0 && _queue.TryDequeue(out var action); count--)

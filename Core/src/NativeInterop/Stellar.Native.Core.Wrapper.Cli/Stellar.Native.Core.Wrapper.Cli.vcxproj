@@ -53,6 +53,7 @@
         <ClCompile Include="Wrapper\Modules\ModuleRegistry.cpp"/>
         <ClCompile Include="Wrapper\Native\NativeCore.cpp"/>
         <ClCompile Include="Wrapper\Native\CoreContext.cpp"/>
+        <ClCompile Include="Wrapper\Native\NativeAllocator.cpp"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -27,6 +27,7 @@
         <Compile Remove="Failures\**\*.cs"/>
         <Compile Remove="JobSystem\**\*.cs"/>
         <Compile Remove="Lifecycle\**\*.cs"/>
+        <Compile Remove="Profiling\**\*.cs"/>
         <Compile Remove="Threading\**\*.cs"/>
         <Compile Remove="Timing\**\*.cs"/>
     </ItemGroup>

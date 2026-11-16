@@ -267,9 +267,14 @@ public sealed class ConcurrentList<T>
     /// <summary>
     /// Enumerates the items as they were when the enumeration started.
     /// </summary>
-    public IEnumerator<T> GetEnumerator()
+    public SnapshotEnumerator<T> GetEnumerator()
     {
-        return ((IEnumerable<T>)_items).GetEnumerator();
+        return new SnapshotEnumerator<T>(_items);
+    }
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()

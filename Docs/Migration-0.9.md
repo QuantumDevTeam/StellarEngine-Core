@@ -75,6 +75,10 @@ mirror of the membership of containers is gone (`ContainerRegistry`, `stellar_co
 snapshot shared until the next change, and raise `Changed` with what changed. `Catalog<TKey, TValue>` is a
 `ConcurrentMap` that is an engine catalog.
 
+`GetEnumerator()` of the collections, the containers and `Registrations` gives a `SnapshotEnumerator<T>`, a struct:
+`foreach` allocates nothing. `Keys`, `Values` and `Snapshot` of a map, and `Keys` and `Values` of a registry, are
+arrays shared until the next change: do not change them.
+
 ## Catalogs
 
 What is found by a key of its own, not by an identifier, is a catalog: `ICatalog<TKey, TValue>` (`Set`, `TryAdd`,
@@ -110,6 +114,33 @@ One failure system per engine and one catcher everywhere, the runtime included.
 | `DomainNotFoundException : IOException` | `DomainNotFoundException : FailureException`, of the file system |
 
 A reaction that stops the work makes a catcher throw the failure on, as if the call had not been caught.
+
+A catcher keeps every failure it caught by default. `Keeps` sets how many of the last ones `Failures` keeps, and
+`FailureCount` counts them all; the catchers of the runtime keep 16, so a failure that repeats on every frame costs no
+memory.
+
+## Phases of the main loop
+
+| Before | Now |
+|---|---|
+| `void Update<TContext>(ref readonly TContext context) where TContext : IFrameContext, allows ref struct`, the same for every phase | `void Update(in FrameContext context)` |
+| `Stellar.Runtime.Loop.FrameContext` | `Stellar.Kernel.Lifecycle.FrameContext`, the one context of a phase |
+
+A phase is a plain interface call: half the cost of the generic one, for every participant of every frame.
+A participant is not called for a phase it only has the empty default of.
+
+## Native memory
+
+New: `NativeAllocator` (one per engine, `CoreContext.Allocator`, and any made apart), `NativeList<T>` with one owner and
+`ConcurrentNativeList<T>` for many threads, in `Stellar.Core.Memory`, over `Abi/Memory.h`; `NativeListView<T>` for
+native code, in `include/Kernel/memory.h`. The P/Invoke exports are 3.1.
+
+## Profiling
+
+New, in `Stellar.Kernel.Profiling`: markers, counters and categories for code; `IProfilerSession`, which a profiler
+module implements and attaches to an engine (`Profiler.Attach`); `ProfilerEvent`, shared with native code
+(`Abi/Profiling.h`). The runtime marks frames, phases, timers, posted work and stages, and, on demand, every call of a
+participant.
 
 ## Code outside any engine
 

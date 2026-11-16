@@ -58,6 +58,24 @@ public class RegistryTests
     }
 
     [Fact]
+    public void KeysAndValues_FollowTheRegistry()
+    {
+        var registry = CoreEngine.Current.Registry.Of<Crate>();
+        var first = new Crate();
+        var values = registry.Values;
+        registry.Values.Should().BeSameAs(values);
+
+        using var second = new Crate();
+        first.Dispose();
+
+        registry.Values.Should().NotBeSameAs(values).And.Contain(second).And.NotContain(first);
+        registry.Keys.Should().Contain(second.UID).And.NotContain(first.UID);
+    }
+
+    private sealed class Crate()
+        : RegistrableQuant<Crate, MetaQuant>(new MetaQuant());
+
+    [Fact]
     public void Dispose_LeavesEveryRegistry()
     {
         var player = new Player();

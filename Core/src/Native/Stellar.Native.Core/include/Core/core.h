@@ -16,6 +16,11 @@ namespace Stellar::Native::Core
     struct Label;
     class CoreContext;
 
+    namespace Memory
+    {
+        class Allocator;
+    }
+
     namespace Data::Registry
     {
     }

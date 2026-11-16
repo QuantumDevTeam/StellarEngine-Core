@@ -20,6 +20,9 @@
         <Description>StellarEngine Core: quants, registries, containers, failures and the native core</Description>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Native lists work on native memory through pointers -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <!--

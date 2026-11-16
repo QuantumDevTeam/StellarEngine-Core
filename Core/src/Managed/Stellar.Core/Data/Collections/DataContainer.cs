@@ -108,9 +108,14 @@ public abstract class DataContainer<TKey, TValue>
     /// <summary>
     /// Enumerates the items as they were when the enumeration started.
     /// </summary>
-    public IEnumerator<TValue> GetEnumerator()
+    public SnapshotEnumerator<TValue> GetEnumerator()
     {
-        return Items.Snapshot.Select(pair => pair.Value).GetEnumerator();
+        return Items.EnumerateValues();
+    }
+
+    IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
