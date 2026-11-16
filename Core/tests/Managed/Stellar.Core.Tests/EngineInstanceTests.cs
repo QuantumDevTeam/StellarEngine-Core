@@ -129,9 +129,8 @@ public class EngineInstanceTests
         entry.Run(in context).Should().Be(0);
 
         entry.Core.Instance.Should().BeSameAs(engine);
-        CoreEngine.For(engine).FailureDispatcher.Should().NotBeNull();
-        CoreEngine.For(engine).FailureLevels.Error.Should().NotBeNull();
-        CoreEngine.Default.FailureLevels.Error.Should().BeNull();
+        CoreEngine.For(engine).Failures.Should().NotBeNull();
+        CoreEngine.Default.Failures.Should().BeNull();
 
         entry.Dispose();
 

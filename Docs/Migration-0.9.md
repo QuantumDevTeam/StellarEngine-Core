@@ -52,7 +52,6 @@ Objects no longer register themselves: registries do, and tell them.
 | `QuantsRegistry<T>`, `MetaQuantsRegistry<T>`, `DataContainerRegistry`, `ConcurrentRegistry<T>` | `Registry<T>` |
 | a cast after `registry.Get(id)` | `registry.Get<TDerived>(id)`: `null` when the object is not one |
 | a quant in the registry of its exact type | in the registry of its home type and of every type of its hierarchy marked `[StellarRegistry]` |
-| `IFailureLevel : IRegistrableQuantumObject` | `IFailureLevel : ILabeled, IDisposable`: a level lives in the table of its dispatcher |
 
 `RegistersImplicitly` turns the implicit registration off for a class.
 
@@ -90,6 +89,27 @@ refuses and what a missing key throws. A registry is only what holds objects by 
 | `IContentTypeRegistry.Register(extension, type)` | `IContentTypeCatalog.Set(extension, type)` |
 | `IFileSystem.RegisterDriver(driver)`, `TryGetDriver(scheme, out driver)` | `fileSystem.AddDriver(driver)`, `fileSystem.Drivers.TryGet(scheme, out driver)` |
 | `IFileSystem.GetDomain(name)`, `TryGetDomain(name, out domain)`, `Domains` as a collection | `fileSystem.Domains.Get(name)`, `TryGet(name, out domain)`: a read-only catalog |
+
+## Failures
+
+One failure system per engine and one catcher everywhere, the runtime included.
+
+| Before | Now |
+|---|---|
+| `IFailureLevel`, the classes `NonCritical`, `Warning`, `Error`, `CriticalError` | `FailureLevel`, an enum with the same names, ordered |
+| `IsLoggable`, `IsStopExecute`, `ShouldTerminate` of a level | `FailureReaction`: `Log`, `StopExecution`, `StopEngine`, from the catalogs of `IFailureSystem` |
+| `FailureType`, a closed enum of flags | `FailureKind`, an open set (`new FailureKind("audio")`); the phase of a frame is `Failure.Phase` |
+| `IFailure`, the struct `Failure` | `Failure`, a class: kind, level, message, exception, sender, phase, reaction |
+| `IFailureDispatcher`, `IFailureReporter`, handler providers and bindings | `IFailureSystem`: `Report`, `ReactionTo`, `AddHandler(handler, filter)` |
+| `IFailureHandler.Handle(ref TContext)` | `IFailureHandler.Handle(Failure)`: it hears; the reaction is decided by the system |
+| `IFailureCatch`, `FailureCatch` (`Try`/`Except`/`Finally`/`Handle`) | `Catcher`: `using`, `Catch<T>` blocks, `Run`, `Try`, `RunAsync`, `TryAsync`, `Guard`, `Report` |
+| `RuntimeCatcher`, `CatchResult` | `RuntimeCatchers` of plain `Catcher`s, and `RuntimeCatchers.MustStop(level, failure)` |
+| `Engine.FailureLevels`, `Engine.FailureDispatcher`, `CoreEngine.FailureLevels` | `Engine.Failures`, `CoreEngine.Failures` |
+| `IRunContext.FailureDispatcher` | `IRunContext.Failures` |
+| `IEngineControl.RequestStop(reason, IFailure)` | `RequestStop(reason, Failure)` |
+| `DomainNotFoundException : IOException` | `DomainNotFoundException : FailureException`, of the file system |
+
+A reaction that stops the work makes a catcher throw the failure on, as if the call had not been caught.
 
 ## Code outside any engine
 

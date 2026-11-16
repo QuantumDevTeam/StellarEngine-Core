@@ -1,3 +1,4 @@
+using Stellar.Kernel.Failures;
 using Stellar.Kernel;
 using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.Lifecycle;
@@ -19,13 +20,13 @@ public sealed class MainLoopTests : IDisposable
     private readonly MainThreadDispatcher _dispatcher = new();
     private readonly EngineControl _control = new();
     private readonly ManualTimeSource _source = new();
-    private readonly RuntimeCatcher _catcher;
+    private readonly Catcher _catcher;
     private readonly TimeSystem _time;
     private readonly MainLoops _loops;
 
     public MainLoopTests()
     {
-        _catcher = new RuntimeCatcher(CatchLevel.MainLoop, new RuntimeLog(fallback: _output));
+        _catcher = new RuntimeCatchers(new RuntimeLog(fallback: _output), () => null, () => false).MainLoop;
         _time = new TimeSystem(_source, 0);
         _loops = new MainLoops(new MainLoopOptions { Name = "Main", MaxDeltaTime = 0 }, _time, _dispatcher, _catcher,
             _control);
@@ -302,7 +303,7 @@ public sealed class MainLoopTests : IDisposable
 
         while (!invoked.IsCompleted)
         {
-            _dispatcher.Drain(_catcher);
+            _dispatcher.Drain(_catcher, CatchLevel.MainLoop);
             Thread.Sleep(1);
         }
 
@@ -315,7 +316,7 @@ public sealed class MainLoopTests : IDisposable
     {
         var mainThread = Environment.CurrentManagedThreadId;
 
-        var after = MainThreadPump.Run(_dispatcher, _catcher, async () =>
+        var after = MainThreadPump.Run(_dispatcher, _catcher, CatchLevel.MainLoop, async () =>
         {
             await Task.Delay(10);
             await Task.Run(() => { });

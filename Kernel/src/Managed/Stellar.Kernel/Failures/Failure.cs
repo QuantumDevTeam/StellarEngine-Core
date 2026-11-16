@@ -1,0 +1,156 @@
+using System;
+using System.Threading;
+using Stellar.Kernel.Lifecycle;
+using Stellar.Kernel.Quantization;
+
+namespace Stellar.Kernel.Failures;
+
+/// <summary>
+/// A failure of the engine: what went wrong, where, how seriously, and what was done about it.
+/// </summary>
+/// <remarks>
+/// <para>Code of the engine works with failures, whatever went wrong: an exception of the engine
+/// (<see cref="FailureException"/>) carries its failure, and any other exception is wrapped into one
+/// (<see cref="From"/>), so a handler, a log or a game sees one shape.</para>
+/// <para>A failure is reported once: the first failure system or catcher that reports it sets
+/// <see cref="Reaction"/>, and everyone after that sees the same decision.</para>
+/// </remarks>
+public sealed class Failure
+{
+    private readonly object _sync = new();
+    private int _reported;
+    private FailureReaction _reaction;
+
+    /// <summary>
+    /// Makes a failure.
+    /// </summary>
+    /// <param name="kind">Where it comes from.</param>
+    /// <param name="level">How serious it is.</param>
+    /// <param name="message">What went wrong.</param>
+    /// <param name="exception">The exception behind it, if any.</param>
+    /// <param name="sender">The object it happened in, if known.</param>
+    /// <param name="phase">The phase of the frame it happened in, if any.</param>
+    public Failure(FailureKind kind, FailureLevel level, string message, Exception? exception = null,
+        IQuantumObject? sender = null, FramePhase? phase = null)
+    {
+        Kind = kind;
+        Level = level;
+        Message = string.IsNullOrEmpty(message) ? exception?.Message ?? "A failure" : message;
+        Exception = exception;
+        Sender = sender;
+        Phase = phase;
+    }
+
+    /// <summary>Gets the identifier of the failure.</summary>
+    public Identifier UID { get; } = Identifier.New();
+
+    /// <summary>Gets where it comes from.</summary>
+    public FailureKind Kind { get; }
+
+    /// <summary>Gets how serious it is.</summary>
+    public FailureLevel Level { get; }
+
+    /// <summary>Gets what went wrong.</summary>
+    public string Message { get; }
+
+    /// <summary>Gets the exception behind it, if any.</summary>
+    public Exception? Exception { get; }
+
+    /// <summary>Gets the object it happened in, if known.</summary>
+    public IQuantumObject? Sender { get; }
+
+    /// <summary>Gets the phase of the frame it happened in, if any.</summary>
+    public FramePhase? Phase { get; }
+
+    /// <summary>Gets when it happened.</summary>
+    public DateTime TimeUtc { get; } = DateTime.UtcNow;
+
+    /// <summary>Gets whether it was reported.</summary>
+    public bool IsReported => Volatile.Read(ref _reported) != 0;
+
+    /// <summary>Gets what was done about it; <c>null</c> until it is reported.</summary>
+    public FailureReaction? Reaction => IsReported ? _reaction : null;
+
+    /// <summary>
+    /// Makes the failure of an exception: the failure of an exception of the engine, a new one for any other.
+    /// </summary>
+    /// <param name="exception">The exception.</param>
+    /// <param name="kind">Where it comes from, for an exception that is not of the engine.</param>
+    /// <param name="level">How serious it is, for an exception that is not of the engine.</param>
+    /// <param name="sender">The object it happened in, if known.</param>
+    /// <param name="operation">What was being done, put before the message; <c>null</c> for nothing.</param>
+    /// <param name="phase">The phase of the frame, if any.</param>
+    /// <returns>The failure.</returns>
+    public static Failure From(Exception exception, FailureKind kind, FailureLevel level, IQuantumObject? sender = null,
+        string? operation = null, FramePhase? phase = null)
+    {
+        if (exception is null) throw new ArgumentNullException(nameof(exception));
+        if (exception is FailureException engine) return engine.Failure;
+
+        var message = string.IsNullOrEmpty(operation) ? exception.Message : $"{operation}: {exception.Message}";
+        return new Failure(kind, level, message, exception, sender, phase);
+    }
+
+    /// <summary>
+    /// Records what was done about the failure: called once, by whoever reports it first.
+    /// </summary>
+    /// <param name="reaction">The reaction.</param>
+    /// <returns><c>true</c> if this call reported it; <c>false</c> if it was reported already.</returns>
+    public bool MarkReported(FailureReaction reaction)
+    {
+        lock (_sync)
+        {
+            if (_reported != 0) return false;
+
+            _reaction = reaction;
+            Volatile.Write(ref _reported, 1);
+            return true;
+        }
+    }
+
+    /// <inheritdoc/>
+    public override string ToString()
+    {
+        return $"{Level} ({Kind}): {Message}";
+    }
+}
+
+/// <summary>
+/// An exception of the engine: it carries its <see cref="Failure"/>.
+/// </summary>
+/// <remarks>
+/// Errors of the engine derive from it and say where they come from and how serious they are. A catcher throws it
+/// on when the reaction to a failure stops the work: a foreign exception travels inside, as
+/// <see cref="Exception.InnerException"/>.
+/// </remarks>
+public class FailureException
+    : Exception
+{
+    /// <summary>
+    /// Makes an exception of the engine, with a new failure.
+    /// </summary>
+    /// <param name="kind">Where it comes from.</param>
+    /// <param name="level">How serious it is.</param>
+    /// <param name="message">What went wrong.</param>
+    /// <param name="innerException">The exception behind it, if any.</param>
+    public FailureException(FailureKind kind, FailureLevel level, string message, Exception? innerException = null)
+        : base(message, innerException)
+    {
+        Failure = new Failure(kind, level, message, this);
+    }
+
+    /// <summary>
+    /// Makes the exception of a failure, to throw it on.
+    /// </summary>
+    /// <param name="failure">The failure.</param>
+    public FailureException(Failure failure)
+        : base((failure ?? throw new ArgumentNullException(nameof(failure))).Message, failure.Exception)
+    {
+        Failure = failure;
+    }
+
+    /// <summary>
+    /// Gets the failure.
+    /// </summary>
+    public Failure Failure { get; }
+}

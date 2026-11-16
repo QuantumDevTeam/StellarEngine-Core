@@ -1,263 +1,275 @@
-using Stellar.Core.Data.Registry;
-using Stellar.Kernel.Data.Registry;
-using Stellar.Core.Data.Context;
 using Stellar.Core.EntryPoints;
 using Stellar.Core.Failures;
-using Stellar.Core.Failures.BaseLevels;
-using Stellar.Core.Failures.Handlers;
 using Stellar.Core.Global;
-using Stellar.Core.Quantization;
 using Stellar.Kernel.Configuration;
 using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.Failures;
-using Stellar.Kernel.Failures.Handlers;
+using Stellar.Kernel.FileSystem;
 using Stellar.Kernel.Lifecycle;
 using Stellar.Kernel.LoggingSystem;
 using Stellar.Kernel.Quantization;
+using Stellar.Kernel.Services;
 
 namespace Stellar.Core.Tests;
 
-public class FailureTests
+public class FailureSystemTests
 {
-    private sealed class RecordingLogger()
-        : Quant<MetaQuant>(new MetaQuant()), ILogger
+    private sealed class RecordingLogger : ILogger
     {
-        public List<string> Messages { get; } = [];
+        public List<(LogLevel Level, string Message)> Lines { get; } = [];
 
-        public void Log(LogLevel level, string message)
-        {
-            Messages.Add(message);
-        }
+        public Kernel.Identifier UID { get; } = Kernel.Identifier.New();
 
-        public void LogWithoutFormat(string message)
-        {
-            Messages.Add(message);
-        }
+        public IMetaQuant Meta => throw new NotSupportedException();
 
-        private Registrations? _registrations;
+        public IReadOnlyList<IMetaQuant> Metas => [];
 
-        public IRegistrations Registrations => _registrations ??= new Registrations(this);
+        public Kernel.Data.Registry.IRegistrations Registrations => throw new NotSupportedException();
+
+        public TMeta? FindMeta<TMeta>() where TMeta : class, IMetaQuant => null;
+
+        public void Log(LogLevel level, string message) => Lines.Add((level, message));
+
+        public void LogWithoutFormat(string message) => Lines.Add((LogLevel.Info, message));
 
         public void Dispose()
         {
         }
     }
 
-    private sealed class RecordingEngineControl : IEngineControl
+    private sealed class RecordingControl : IEngineControl
     {
         public EngineState State => EngineState.Running;
 
-        public StopReason? Requested { get; private set; }
+        public Failure? Stopped { get; private set; }
 
-        public void RequestStop(StopReason reason, IFailure? failure = null)
-        {
-            Requested = reason;
-        }
+        public void RequestStop(StopReason reason, Failure? failure = null) => Stopped = failure;
     }
 
-    private sealed class CountingHandler()
-        : RegistrableQuant<CountingHandler, MetaQuant>(new MetaQuant()), IFailureHandler
+    private sealed class Recorder : IFailureHandler
     {
-        public int Handled { get; private set; }
+        public List<Failure> Heard { get; } = [];
 
-        public ILogger? Logger => null;
-
-        public bool Handle<TContext>(ref readonly TContext context)
-            where TContext : IFailureContext, allows ref struct
-        {
-            Handled++;
-            return false;
-        }
+        public void Handle(Failure failure) => Heard.Add(failure);
     }
 
-    private static Failure MakeFailure(IFailureLevel level, FailureType type = FailureType.Core)
+    [Theory]
+    [InlineData(FailureLevel.NonCritical, FailureReaction.None)]
+    [InlineData(FailureLevel.Warning, FailureReaction.Log)]
+    [InlineData(FailureLevel.Error, FailureReaction.Log | FailureReaction.StopExecution)]
+    [InlineData(FailureLevel.CriticalError, FailureReaction.Log | FailureReaction.StopExecution | FailureReaction.StopEngine)]
+    public void Levels_HaveTheirReactionsByDefault(FailureLevel level, FailureReaction reaction)
     {
-        return new Failure
-        {
-            Message = "boom",
-            InnerException = null,
-            Type = type,
-            Level = level,
-            Source = "test"
-        };
-    }
-
-    private static bool Handle(FailureHandler handler, IFailureLevel level)
-    {
-        var context = new FailureContext(null, MakeFailure(level));
-        return handler.Handle(in context);
+        new FailureSystem().ReactionTo(new Failure(FailureKind.Engine, level, "x")).Should().Be(reaction);
     }
 
     [Fact]
-    public void Handler_AppliesTheLevel()
+    public void AReactionOfAKind_WinsOverTheOneOfTheLevel()
     {
-        var meta = new FailureDispatcherMeta();
+        var system = new FailureSystem();
+        var audio = new FailureKind("Audio");
+        system.KindReactions.Set((audio, FailureLevel.Error), FailureReaction.Log);
+
+        system.ReactionTo(new Failure(audio, FailureLevel.Error, "no device")).Should().Be(FailureReaction.Log);
+        system.ReactionTo(new Failure(FailureKind.Engine, FailureLevel.Error, "x")).Stops().Should().BeTrue();
+        audio.Name.Should().Be("audio");
+    }
+
+    [Fact]
+    public void Report_Logs_TellsTheHandlers_AndStopsTheEngine()
+    {
         var logger = new RecordingLogger();
-        var engine = new RecordingEngineControl();
-        var handler = new FailureHandler(logger, engine);
-
-        Handle(handler, new NonCritical(meta)).Should().BeFalse();
-        logger.Messages.Should().BeEmpty();
-
-        Handle(handler, new Warning(meta)).Should().BeFalse();
-        logger.Messages.Should().HaveCount(1);
-
-        Handle(handler, new Error(meta)).Should().BeTrue();
-        engine.Requested.Should().BeNull();
-
-        Handle(handler, new CriticalError(meta)).Should().BeTrue();
-        engine.Requested.Should().Be(StopReason.CriticalError);
-    }
-
-    [Fact]
-    public void Handler_IgnoresDisabledLevel()
-    {
-        var level = new Error(new FailureDispatcherMeta()) { IsEnabled = false };
-
-        Handle(new FailureHandler(), level).Should().BeFalse();
-    }
-
-    [Fact]
-    public void TwoDispatchers_MayHaveLevelsWithTheSameName()
-    {
-        // Regression: a level used to take the global label name and the second one failed
-        var action = () =>
+        var control = new RecordingControl();
+        var system = new FailureSystem(() => logger, () => control);
+        var all = new Recorder();
+        var fileSystemOnly = new Recorder();
+        system.AddHandler(all);
+        using (system.AddHandler(fileSystemOnly, new FailureFilter(FailureLevel.Warning, FailureKind.FileSystem)))
         {
-            _ = new Error(new FailureDispatcherMeta());
-            _ = new Error(new FailureDispatcherMeta());
+            var critical = new Failure(FailureKind.Engine, FailureLevel.CriticalError, "the world ended");
+            system.Report(critical).Should().HaveFlag(FailureReaction.StopEngine);
+
+            control.Stopped.Should().BeSameAs(critical);
+            logger.Lines.Should().ContainSingle(line => line.Level == LogLevel.Exception);
+            all.Heard.Should().Equal(critical);
+            fileSystemOnly.Heard.Should().BeEmpty();
+
+            system.Report(new Failure(FailureKind.FileSystem, FailureLevel.Warning, "slow disk"));
+            fileSystemOnly.Heard.Should().ContainSingle();
+        }
+
+        system.Report(new Failure(FailureKind.FileSystem, FailureLevel.Warning, "slow again"));
+        fileSystemOnly.Heard.Should().ContainSingle();
+        all.Heard.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void AFailure_IsReportedOnce()
+    {
+        var system = new FailureSystem();
+        var recorder = new Recorder();
+        system.AddHandler(recorder);
+        var failure = new Failure(FailureKind.Engine, FailureLevel.Warning, "once");
+
+        system.Report(failure);
+        system.Report(failure);
+
+        recorder.Heard.Should().ContainSingle();
+        failure.Reaction.Should().Be(FailureReaction.Log);
+    }
+}
+
+public class CatcherTests
+{
+    [Fact]
+    public void AFailureThatLetsTheWorkGoOn_GivesTheFallback()
+    {
+        using var catcher = new Catcher(FailureKind.FileSystem, FailureLevel.Warning);
+
+        var save = catcher.Try<string>(() => throw new IOException("no save"), fallback: "empty");
+        var next = catcher.Run(() => { });
+
+        save.Should().Be("empty");
+        next.Should().BeTrue();
+        catcher.Failures.Should().ContainSingle().Which.Kind.Should().Be(FailureKind.FileSystem);
+        catcher.Failures[0].Reaction.Should().Be(FailureReaction.Log);
+    }
+
+    [Fact]
+    public void AFailureThatStopsTheWork_IsThrownOn_AndTheWholeTryStops()
+    {
+        var reached = false;
+
+        var block = () =>
+        {
+            using var catcher = new Catcher(FailureKind.FileSystem);
+            catcher.Run(() => throw new IOException("disk gone"));
+            reached = true;
         };
 
-        action.Should().NotThrow();
+        block.Should().Throw<FailureException>().WithInnerException<IOException>();
+        reached.Should().BeFalse();
     }
 
     [Fact]
-    public void Dispatcher_RoutesByTypeAndLevel()
+    public void CatchBlocks_HandleTheirExceptions_AndAreNotReported()
     {
-        var meta = new FailureDispatcherMeta();
-        var provider = (FailureHandlerProvider)meta.FailureHandlerProvider;
-        var error = new Error(meta);
-        var warning = new Warning(meta);
+        var firstRun = false;
+        using var catcher = new Catcher(FailureKind.FileSystem)
+            .Catch<FileNotFoundException>(_ => firstRun = true)
+            .Catch<IOException>(FailureLevel.Warning);
 
-        var coreErrors = new CountingHandler();
-        var everything = new CountingHandler();
-        provider.RegisterHandler(new FailureBinding(FailureType.Core, error), coreErrors);
-        provider.RegisterDefaultHandler(everything);
+        catcher.Run(() => throw new FileNotFoundException("no settings")).Should().BeFalse();
+        catcher.Run(() => throw new IOException("busy")).Should().BeFalse();
 
-        var dispatcher = new FailureDispatcher(meta);
-
-        var coreError = new FailureContext(null, MakeFailure(error));
-        var coreWarning = new FailureContext(null, MakeFailure(warning));
-        var otherError = new FailureContext(null, MakeFailure(error, FailureType.Logging));
-
-        dispatcher.Dispatch(in coreError);
-        dispatcher.Dispatch(in coreWarning);
-        dispatcher.Dispatch(in otherError);
-
-        coreErrors.Handled.Should().Be(1);
-        everything.Handled.Should().Be(3);
+        firstRun.Should().BeTrue();
+        catcher.Failures.Should().ContainSingle().Which.Level.Should().Be(FailureLevel.Warning);
     }
 
     [Fact]
-    public void Dispatcher_ReportsWhenAnyHandlerStops()
+    public void ErrorsOfTheEngine_KeepTheirFailure()
     {
-        var meta = new FailureDispatcherMeta();
-        ((FailureHandlerProvider)meta.FailureHandlerProvider).RegisterDefaultHandler(new FailureHandler());
+        using var catcher = new Catcher(FailureKind.Application, FailureLevel.Warning);
 
-        var dispatcher = new FailureDispatcher(meta);
-        var stopping = new FailureContext(null, MakeFailure(new Error(meta)));
-        var passing = new FailureContext(null, MakeFailure(new Warning(meta)));
+        var block = () => catcher.Run(() => throw new DomainNotFoundException("assets"));
 
-        dispatcher.Dispatch(in stopping).Should().BeTrue();
-        dispatcher.Dispatch(in passing).Should().BeFalse();
+        var thrown = block.Should().Throw<DomainNotFoundException>().Which;
+        thrown.Failure.Kind.Should().Be(FailureKind.FileSystem);
+        catcher.Failures.Should().ContainSingle().Which.Should().BeSameAs(thrown.Failure);
     }
 
     [Fact]
-    public void Composite_JoinsProviders()
+    public void AFailureCaughtAgain_KeepsItsFirstReaction()
     {
-        var composite = new CompositeFailureHandlerProvider();
-        var first = new FailureHandlerProvider(new HandlerProviderMeta());
-        var second = new FailureHandlerProvider(new HandlerProviderMeta());
-        first.RegisterDefaultHandler(new CountingHandler());
-        second.RegisterDefaultHandler(new CountingHandler());
+        var system = new FailureSystem();
+        var recorder = new FailureSystemRecorder();
+        system.AddHandler(recorder);
 
-        composite.AddProvider(first);
-        composite.AddProvider(second);
+        using var outer = new Catcher(system, FailureKind.Engine, FailureLevel.Warning);
 
-        var failure = MakeFailure(new Error(new FailureDispatcherMeta()));
-        composite.GetHandlers(failure).Should().HaveCount(2);
+        // A stop goes up through every catcher, as if none were there, until a plain try; it is reported once
+        var block = () => outer.Run(() =>
+        {
+            using var inner = new Catcher(system, FailureKind.Engine);
+            inner.Run(() => throw new InvalidOperationException("deep"));
+        });
 
-        composite.RemoveProvider(first);
-        composite.GetHandlers(failure).Should().HaveCount(1);
+        block.Should().Throw<FailureException>().WithInnerException<InvalidOperationException>();
+        recorder.Count.Should().Be(1);
+        outer.Failures.Should().ContainSingle().Which.Level.Should().Be(FailureLevel.Error);
     }
 
     [Fact]
-    public void Catch_RunsBlocksInOrder()
+    public void Guard_NeverThrows_AndGivesTheFailure()
     {
-        var log = new List<string>();
+        using var catcher = new Catcher(FailureKind.Engine, FailureLevel.CriticalError);
 
-        new FailureCatch()
-            .Try(_ =>
-            {
-                log.Add("try");
-                throw new InvalidOperationException();
-            })
-            .Except<ArgumentException>((_, _) => log.Add("wrong"))
-            .Except<InvalidOperationException>((_, _) => log.Add("except"))
-            .Finally(_ => log.Add("finally"))
-            .Handle();
+        var failure = catcher.Guard(() => throw new InvalidOperationException("boom"), "the frame", phase: FramePhase.Update);
 
-        log.Should().Equal("try", "except", "finally");
+        failure.Should().NotBeNull();
+        failure!.Message.Should().Be("the frame: boom");
+        failure.Phase.Should().Be(FramePhase.Update);
+        failure.Reaction!.Value.Should().HaveFlag(FailureReaction.StopEngine);
+        catcher.Guard(() => { }).Should().BeNull();
     }
 
     [Fact]
-    public void Catch_DoesNothingUntilHandle()
+    public async Task AsyncCalls_AreCaughtToo()
     {
-        var ran = false;
+        using var catcher = new Catcher(FailureKind.Engine, FailureLevel.Warning);
 
-        new FailureCatch().Try(_ => ran = true);
+        (await catcher.RunAsync(async () =>
+        {
+            await Task.Yield();
+            throw new InvalidOperationException("later");
+        })).Should().BeFalse();
 
-        ran.Should().BeFalse();
+        (await catcher.TryAsync(() => ValueTask.FromResult(5), 0)).Should().Be(5);
+        catcher.HasFailed.Should().BeTrue();
     }
 
     [Fact]
-    public void Catch_ExposesCaughtException()
+    public void Cancellation_IsNotAFailure()
     {
-        var exception = new InvalidOperationException();
+        using var catcher = new Catcher();
 
-        var failureCatch = new FailureCatch()
-            .Try(_ => throw exception)
-            .Except<Exception>((_, _) => { })
-            .Handle();
-
-        failureCatch.Caught.Should().BeSameAs(exception);
+        catcher.Invoking(c => c.Run(() => throw new OperationCanceledException())).Should().Throw<OperationCanceledException>();
+        catcher.HasFailed.Should().BeFalse();
     }
 
     [Fact]
-    public void Catch_RethrowsUnclaimedException_WhenThereIsNoDispatcher()
+    public void ThrowIfFailed_ThrowsTheWorst()
     {
-        var finallyRan = false;
+        using var catcher = new Catcher(FailureKind.Engine, FailureLevel.Warning);
+        catcher.Report("a placeholder was used");
+        catcher.Report(new InvalidOperationException("worse"), level: FailureLevel.NonCritical);
+        catcher.Report("the worst", FailureLevel.Warning);
 
-        var action = () => new FailureCatch()
-            .Try(_ => throw new InvalidOperationException())
-            .Finally(_ => finallyRan = true)
-            .Handle();
-
-        action.Should().Throw<InvalidOperationException>();
-        finallyRan.Should().BeTrue();
+        catcher.Invoking(c => c.ThrowIfFailed()).Should().Throw<FailureException>().WithMessage("a placeholder was used");
     }
 
     [Fact]
-    public void Catch_SendsUnclaimedExceptionToDispatcher()
+    public void InAnEngine_TheCatcherReportsToItsSystem()
     {
-        var meta = new FailureDispatcherMeta();
-        var handler = new CountingHandler();
-        ((FailureHandlerProvider)meta.FailureHandlerProvider).RegisterDefaultHandler(handler);
+        var engine = new ScopeEngine("Failing");
+        var system = new FailureSystem();
+        var recorder = new FailureSystemRecorder();
+        system.AddHandler(recorder);
+        CoreEngine.For(engine).Services.Set<IFailureSystem>(system);
 
-        new FailureCatch(new FailureDispatcher(meta), new Error(meta), FailureType.Core)
-            .Try(_ => throw new InvalidOperationException())
-            .Handle();
+        using (EngineScope.Enter(engine))
+        using (var catcher = new Catcher(FailureKind.Engine, FailureLevel.Warning))
+            catcher.Run(() => throw new InvalidOperationException("in the engine"));
 
-        handler.Handled.Should().Be(1);
+        recorder.Count.Should().Be(1);
+        CoreEngine.Release(engine);
+    }
+
+    private sealed class FailureSystemRecorder : IFailureHandler
+    {
+        public int Count { get; private set; }
+
+        public void Handle(Failure failure) => Count++;
     }
 }
 
@@ -280,22 +292,20 @@ public class EntryPointTests
     }
 
     [Fact]
-    public void Run_BringsUpFailurePipeline_AndDisposeTakesItDown()
+    public void Run_PublishesTheFailureSystem_AndDisposeWithdrawsIt()
     {
+        var engine = new ScopeEngine("Entry");
         var entry = new EntryPoint(new RuntimeConfiguration());
-        var context = new RunContext(null);
+        var context = new RunContext(null, engine: engine);
 
         entry.Run(in context).Should().Be(0);
-
-        Engine.FailureDispatcher.Should().NotBeNull();
-        Engine.FailureLevels.Error.Should().NotBeNull();
+        CoreEngine.For(engine).Failures.Should().NotBeNull();
 
         var stopContext = new StopContext(null, StopReason.Regular);
         entry.RequestStop(in stopContext);
         entry.Dispose();
 
-        Engine.FailureDispatcher.Should().BeNull();
-        Engine.FailureLevels.Error.Should().BeNull();
+        CoreEngine.For(engine).Failures.Should().BeNull();
     }
 
     [Fact]

@@ -24,5 +24,5 @@ public interface IEngineControl
     /// </summary>
     /// <param name="reason">Why the engine should stop.</param>
     /// <param name="failure">The failure that caused the request, if any.</param>
-    void RequestStop(StopReason reason, IFailure? failure = null);
+    void RequestStop(StopReason reason, Failure? failure = null);
 }

@@ -178,7 +178,34 @@ apart from the others.
 
 ## Failures
 
-The runtime starts before the failure system of Stellar.Core, so it catches at levels of its own:
+Code of the engine works with failures (`Failure`): what went wrong, its kind (`FailureKind`, an open set such as
+`filesystem`, or `audio` of a module), its level (`NonCritical`, `Warning`, `Error`, `CriticalError`), and what was done
+about it (`FailureReaction`: log, stop the work, stop the engine). An error of the engine is a `FailureException`, which
+carries its failure; any other exception is wrapped into one.
+
+Each engine has its failure system (`IFailureSystem`), published by Stellar.Core in its services: reactions in two
+catalogs, by level and by kind and level, and handlers that hear of failures. `Engine.Failures` is the one of the
+current engine.
+
+The `Catcher` catches around suspicious calls, as a scope with catch blocks of its own:
+
+```csharp
+using (var catcher = new Catcher(FailureKind.FileSystem, FailureLevel.Warning))
+{
+    catcher.Catch<FileNotFoundException>(_ => firstRun = true);
+
+    var save = catcher.Try(() => LoadSave(slot), fallback: Save.Empty);
+    catcher.Run(() => UpgradeSettings());
+}
+```
+
+A call that fails is reported to the failure system of the current engine. If the reaction stops the work, the failure
+is thrown on as a `FailureException`, as if the call had not been caught, and the whole `try` around it stops; otherwise
+the call gives its fallback and the block goes on. A catch block handles its exceptions itself, without a report. A
+failure is reported once, whichever catchers it goes through. Outside any engine a catcher stands alone. `Guard` and
+`Report` never throw: they give the failure back, for code that decides itself.
+
+The runtime catches with the same catchers (`RuntimeCatchers`), one per level, from before the failure system exists:
 
 | Level | What | Outcome |
 |---|---|---|
@@ -187,8 +214,9 @@ The runtime starts before the failure system of Stellar.Core, so it catches at l
 | `Engine` | The run around the main loop, the stops | Fatal |
 | `MainLoop` | One call of one participant in one phase | Reported: the failure system decides |
 
-Before Stellar.Core is up there is nothing but `try`/`catch` and the error output. Once it is, Stellar.Core publishes an
-`IFailureReporter`, and what the runtime catches goes through the failure levels and handlers like any other failure.
+Before Stellar.Core is up, a failure is written to the log of the runtime, and in the main loop the loop goes on. Once it
+is, what the runtime catches goes to the failure system like any other failure; what the engine does not log is still
+written to the log of the runtime.
 
 ## Threads
 

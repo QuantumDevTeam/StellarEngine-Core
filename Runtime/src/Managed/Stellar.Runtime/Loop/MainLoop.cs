@@ -28,7 +28,7 @@ public sealed class MainLoop
 {
     private readonly MainThreadDispatcher _dispatcher;
     private readonly bool _ownsDispatcher;
-    private readonly RuntimeCatcher _catcher;
+    private readonly Catcher _catcher;
     private readonly EngineControl _control;
     private readonly ITimeSource _source;
     private readonly Participants _participants = new();
@@ -54,7 +54,7 @@ public sealed class MainLoop
     /// <param name="control">The control of the engine: every loop stops with it.</param>
     /// <param name="isPrimary">Whether stopping this loop stops the engine.</param>
     public MainLoop(MainLoopOptions options, IClock clock, ITimeSource source, MainThreadDispatcher dispatcher,
-        bool ownsDispatcher, RuntimeCatcher catcher, EngineControl control, bool isPrimary = false)
+        bool ownsDispatcher, Catcher catcher, EngineControl control, bool isPrimary = false)
     {
         Options = options;
         Clock = clock;
@@ -203,7 +203,7 @@ public sealed class MainLoop
         var reportedDelta = Options.MaxDeltaTime > 0 ? Math.Min(realDelta, Options.MaxDeltaTime) : realDelta;
         var shrink = realDelta > 0 ? reportedDelta / realDelta : 1;
 
-        if (_ownsDispatcher && _dispatcher.Drain(_catcher))
+        if (_ownsDispatcher && _dispatcher.Drain(_catcher, CatchLevel.MainLoop))
             _control.RequestStop(StopReason.CriticalError);
 
         _participants.Apply();
@@ -335,10 +335,10 @@ public sealed class MainLoop
             if (!timer.IsActive) continue;
 
             var time = _clocks[timer.Clock].Time;
-            var result = _catcher.Run(timer.Callback, $"a timer on {timer.Clock.Name}", FailureType.Engine, this);
+            var failure = _catcher.Guard(timer.Callback, $"a timer on {timer.Clock.Name}", FailureKind.Engine, this);
             timer.Ran(time);
 
-            if (result.MustStop) _control.RequestStop(result.Exception!);
+            if (RuntimeCatchers.MustStop(CatchLevel.MainLoop, failure)) _control.RequestStop(failure!);
         }
     }
 
@@ -404,11 +404,10 @@ public sealed class MainLoop
             }
             catch (Exception exception)
             {
-                var type = phase <= FramePhase.PostUpdate ? FailureType.Update : FailureType.Render;
-                var result = _catcher.Handle(exception, $"{phase} of {participant.Quant.GetType().FullName} in {Name}",
-                    type, this);
+                var failure = _catcher.Report(exception, $"{phase} of {participant.Quant.GetType().FullName} in {Name}",
+                    sender: this, phase: phase);
 
-                if (result.MustStop) _control.RequestStop(exception);
+                if (RuntimeCatchers.MustStop(CatchLevel.MainLoop, failure)) _control.RequestStop(failure!);
             }
         }
     }
@@ -427,7 +426,7 @@ public sealed class MainLoop
             if (remaining <= 0) break;
 
             if (_dispatcher.WaitForWork(TimeSpan.FromSeconds(remaining)) && _ownsDispatcher &&
-                _dispatcher.Drain(_catcher))
+                _dispatcher.Drain(_catcher, CatchLevel.MainLoop))
                 _control.RequestStop(StopReason.CriticalError);
         }
 

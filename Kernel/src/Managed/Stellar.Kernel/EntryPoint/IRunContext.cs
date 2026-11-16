@@ -22,9 +22,9 @@ public interface IRunContext
     ILogger? Logger { get; }
 
     /// <summary>
-    /// Gets the failure dispatcher, or <c>null</c> if failure handling is disabled.
+    /// Gets the failure system of the engine, or <c>null</c> before Stellar.Core publishes it.
     /// </summary>
-    IFailureDispatcher? FailureDispatcher { get; }
+    IFailureSystem? Failures { get; }
 
     /// <summary>
     /// Gets the services of the engine, or <c>null</c> if the engine has none yet.

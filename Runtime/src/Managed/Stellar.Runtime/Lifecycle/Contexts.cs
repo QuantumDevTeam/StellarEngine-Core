@@ -12,13 +12,13 @@ namespace Stellar.Runtime.Lifecycle;
 /// </summary>
 /// <param name="sender">The runtime.</param>
 /// <param name="logger">The logger of the engine, if there is one yet.</param>
-/// <param name="failureDispatcher">The failure dispatcher, if there is one yet.</param>
+/// <param name="failures">The failure system, if there is one yet.</param>
 /// <param name="services">The services of the engine, if there are any yet.</param>
 /// <param name="engine">The engine.</param>
 public readonly ref struct RuntimeRunContext(
     IQuantumObject? sender,
     ILogger? logger,
-    IFailureDispatcher? failureDispatcher,
+    IFailureSystem? failures,
     IServiceCatalog? services,
     IEngineInstance? engine
 ) : IRunContext
@@ -30,7 +30,7 @@ public readonly ref struct RuntimeRunContext(
     public ILogger? Logger { get; } = logger;
 
     /// <inheritdoc/>
-    public IFailureDispatcher? FailureDispatcher { get; } = failureDispatcher;
+    public IFailureSystem? Failures { get; } = failures;
 
     /// <inheritdoc/>
     public IServiceCatalog? Services { get; } = services;

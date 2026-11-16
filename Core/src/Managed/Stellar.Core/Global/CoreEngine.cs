@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Stellar.Core.Data.Registry;
-using Stellar.Core.Failures;
 using Stellar.Core.Native;
 using Stellar.Core.Services;
 using Stellar.Kernel.Data.Collections;
@@ -15,7 +14,7 @@ using Stellar.Kernel.Services;
 namespace Stellar.Core.Global;
 
 /// <summary>
-/// What Stellar.Core keeps for one engine: its services, its failure levels, its registries, managed and native.
+/// What Stellar.Core keeps for one engine: its services, its failure system, its registries, managed and native.
 /// </summary>
 /// <remarks>
 /// <para>Every engine instance has its own (<see cref="For"/>): two engines in one process (an editor and the game it
@@ -35,7 +34,6 @@ public sealed class CoreEngine
         Name = name;
         Native = native;
         Instance = instance;
-        FailureLevels = new CoreFailureLevels();
         Registry = new CoreRegistries();
     }
 
@@ -70,19 +68,14 @@ public sealed class CoreEngine
     public IServiceCatalog Services { get; } = new ServiceCatalog();
 
     /// <summary>
-    /// Gets the failure dispatcher, or <c>null</c> if the Core module has not started yet.
+    /// Gets the failure system, or <c>null</c> if the Core module has not started yet.
     /// </summary>
-    public IFailureDispatcher? FailureDispatcher => Services.Find<IFailureDispatcher>();
+    public IFailureSystem? Failures => Services.Find<IFailureSystem>();
 
     /// <summary>
     /// Gets the logger, or <c>null</c> if no logging module has started.
     /// </summary>
     public ILogger? Logger => Services.Find<ILogger>();
-
-    /// <summary>
-    /// Gets the base failure levels. They exist while the Core module of this engine runs.
-    /// </summary>
-    public CoreFailureLevels FailureLevels { get; }
 
     /// <summary>
     /// Gets the registries.
@@ -126,7 +119,6 @@ public sealed class CoreEngine
         if (IsDisposed || Instance is null) return;
 
         IsDisposed = true;
-        FailureLevels.Reset();
         CoreContext.Release(Instance);
     }
 
@@ -134,42 +126,6 @@ public sealed class CoreEngine
     public override string ToString()
     {
         return $"Core of {Name}";
-    }
-
-    /// <summary>
-    /// The base failure levels of one engine.
-    /// </summary>
-    public sealed class CoreFailureLevels
-    {
-        /// <summary>Gets the level that is neither logged nor stops execution.</summary>
-        public IFailureLevel? NonCritical { get; private set; }
-
-        /// <summary>Gets the level that is logged and does not stop execution.</summary>
-        public IFailureLevel? Warning { get; private set; }
-
-        /// <summary>Gets the level that stops the current execution.</summary>
-        public IFailureLevel? Error { get; private set; }
-
-        /// <summary>Gets the level that terminates the engine.</summary>
-        public IFailureLevel? CriticalError { get; private set; }
-
-        internal void Initialize(IFailureDispatcherMeta meta)
-        {
-            NonCritical = new Failures.BaseLevels.NonCritical(meta);
-            Warning = new Failures.BaseLevels.Warning(meta);
-            Error = new Failures.BaseLevels.Error(meta);
-            CriticalError = new Failures.BaseLevels.CriticalError(meta);
-        }
-
-        internal void Reset()
-        {
-            NonCritical?.Dispose();
-            Warning?.Dispose();
-            Error?.Dispose();
-            CriticalError?.Dispose();
-
-            NonCritical = Warning = Error = CriticalError = null;
-        }
     }
 
     /// <summary>
