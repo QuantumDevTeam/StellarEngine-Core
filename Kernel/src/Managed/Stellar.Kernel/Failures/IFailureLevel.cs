@@ -1,3 +1,4 @@
+using System;
 using Stellar.Kernel.Quantization;
 
 namespace Stellar.Kernel.Failures;
@@ -11,7 +12,7 @@ namespace Stellar.Kernel.Failures;
 /// <para>Levels are registrable, labeled, and disposable objects, allowing runtime modification and disposal.</para>
 /// </remarks>
 public interface IFailureLevel
-    : IRegistrableQuantumObject, ILabeled
+    : ILabeled, IDisposable
 {
     /// <summary>
     /// Gets or sets whether this failure level is enabled. Disabled levels are ignored.

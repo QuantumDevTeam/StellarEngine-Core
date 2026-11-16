@@ -35,7 +35,7 @@ namespace Stellar::Core::Native
 
     CoreContext^ CoreContext::Current::get()
     {
-        auto engine = EngineScope::Current;
+        auto engine = EngineScope::Resolve();
         return engine == nullptr ? _default : For(engine);
     }
 

@@ -58,29 +58,19 @@ public static class Engine
     }
 
     /// <summary>
-    /// The registries.
+    /// The registries of the current engine.
     /// </summary>
     public static class Registry
     {
-        /// <summary>Gets the registry of identifiers.</summary>
-
-        /// <summary>Gets the registry of labels.</summary>
-
         /// <summary>Gets the registry of data containers.</summary>
         public static IRegistry<IDataContainer> DataContainers => Current.Registry.DataContainers;
 
-        /// <summary>Gets the registry of meta quants of one type.</summary>
-        public static IRegistry<TMeta> MetaQuants<TMeta>()
-            where TMeta : class, IRegistrableMetaQuant
+        /// <summary>Gets the registry of a type.</summary>
+        /// <typeparam name="T">The type: a base class or a contract.</typeparam>
+        public static IRegistry<T> Of<T>()
+            where T : class, IRegistrableQuantumObject
         {
-            return Current.Registry.MetaQuants<TMeta>();
-        }
-
-        /// <summary>Gets the registry of quants of one type.</summary>
-        public static IRegistry<T> Quants<T>()
-            where T : class, IRegistrableQuant
-        {
-            return Current.Registry.Quants<T>();
+            return Current.Registry.Of<T>();
         }
     }
 }

@@ -3,6 +3,7 @@ using Stellar.Core.Data.Registry;
 using Stellar.Core.Quantization;
 using Stellar.Kernel;
 using Stellar.Kernel.Data.Collections;
+using Stellar.Kernel.Data.Registry;
 using Stellar.Kernel.Quantization;
 
 namespace Stellar.Core.Data.Collections;
@@ -29,9 +30,6 @@ public abstract class DataContainer<T>
     /// </summary>
     protected ContainerRegistry Native { get; } = Global.CoreEngine.Current.Native.Containers;
 
-    // The registry of data containers of the engine the container was made in
-    private readonly IQuantumObject _home = Global.CoreEngine.Current.Registry.DataContainers;
-
     #region Constructors
 
     /// <summary>
@@ -53,7 +51,10 @@ public abstract class DataContainer<T>
         if (IsReadOnly)
             Native.Seal(UID);
 
-        Register(_home);
+        Registrations = new Registrations(this);
+
+        // A container is always registered: by default in the data containers of the current engine
+        if (RegistersImplicitly) Global.CoreEngine.Current.Registry.RegisterImplicitly(this, typeof(IDataContainer));
     }
 
     /// <summary>
@@ -222,23 +223,19 @@ public abstract class DataContainer<T>
     #endregion
 
     /// <inheritdoc/>
-    public void Register(IQuantumObject? registry = null)
-    {
-        RegistryBinding.Register<IDataContainer>(registry ?? _home, this);
-    }
-
-    /// <inheritdoc/>
-    public void Unregister(IQuantumObject? registry = null)
-    {
-        RegistryBinding.Unregister<IDataContainer>(registry ?? _home, UID);
-    }
+    public IRegistrations Registrations { get; }
 
     /// <summary>
-    /// Unregisters the container and destroys its native side.
+    /// Gets whether a new container goes into the registries of the current engine by itself. <c>true</c> by default.
+    /// </summary>
+    protected virtual bool RegistersImplicitly => true;
+
+    /// <summary>
+    /// Removes the container from every registry it is in and destroys its native side.
     /// </summary>
     public void Dispose()
     {
-        Unregister();
+        Registrations.UnregisterAll();
         Native.Destroy(UID);
     }
 }

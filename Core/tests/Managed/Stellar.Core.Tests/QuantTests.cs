@@ -92,11 +92,11 @@ public class QuantTests
     {
         var service = new Service();
 
-        CoreEngine.Current.Registry.Quants<Service>().Get(service.UID).Should().BeSameAs(service);
+        CoreEngine.Current.Registry.Of<Service>().Get(service.UID).Should().BeSameAs(service);
 
         service.Dispose();
 
-        CoreEngine.Current.Registry.Quants<Service>().Exists(service.UID).Should().BeFalse();
+        CoreEngine.Current.Registry.Of<Service>().Exists(service.UID).Should().BeFalse();
     }
 
     [Fact]
@@ -104,11 +104,11 @@ public class QuantTests
     {
         var meta = new SharedMeta(Identifier.New());
 
-        CoreEngine.Current.Registry.MetaQuants<SharedMeta>().Get(meta.UID).Should().BeSameAs(meta);
+        CoreEngine.Current.Registry.Of<SharedMeta>().Get(meta.UID).Should().BeSameAs(meta);
 
         meta.Dispose();
 
-        CoreEngine.Current.Registry.MetaQuants<SharedMeta>().Exists(meta.UID).Should().BeFalse();
+        CoreEngine.Current.Registry.Of<SharedMeta>().Exists(meta.UID).Should().BeFalse();
     }
 
     [Fact]

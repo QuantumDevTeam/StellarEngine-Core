@@ -51,7 +51,7 @@ context takes its registries with it, unloading its native modules.
 |---|---|
 | C++ | passed explicitly: `context.Containers().Create(id)` |
 | C ABI | the first argument of every function that reaches a registry; null is `CoreContext::Default()` |
-| C# | `Stellar.Core.Native.CoreContext.Current`: the context of the engine of `EngineScope.Current`, or `Default` |
+| C# | `Stellar.Core.Native.CoreContext.Current`: the context of the engine of `EngineScope.Resolve()`, or `Default` |
 
 `CoreContext.For(engine)` gives the context of an engine, made the first time; `CoreContext.Release(engine)` disposes
 it. Stellar.Core does both through `CoreEngine`.

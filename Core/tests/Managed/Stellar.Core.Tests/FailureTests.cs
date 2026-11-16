@@ -1,3 +1,5 @@
+using Stellar.Core.Data.Registry;
+using Stellar.Kernel.Data.Registry;
 using Stellar.Core.Data.Context;
 using Stellar.Core.EntryPoints;
 using Stellar.Core.Failures;
@@ -32,13 +34,9 @@ public class FailureTests
             Messages.Add(message);
         }
 
-        public void Register(IQuantumObject registry)
-        {
-        }
+        private Registrations? _registrations;
 
-        public void Unregister(IQuantumObject registry)
-        {
-        }
+        public IRegistrations Registrations => _registrations ??= new Registrations(this);
 
         public void Dispose()
         {

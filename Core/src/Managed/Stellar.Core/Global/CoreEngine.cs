@@ -30,15 +30,13 @@ public sealed class CoreEngine
 {
     private static readonly ConditionalWeakTable<IEngineInstance, CoreEngine> Engines = new();
 
-    private readonly ConcurrentDictionary<Type, object> _typedRegistries = new();
-
     private CoreEngine(string name, CoreContext native, IEngineInstance? instance)
     {
         Name = name;
         Native = native;
         Instance = instance;
         FailureLevels = new CoreFailureLevels();
-        Registry = new CoreRegistries(this);
+        Registry = new CoreRegistries();
     }
 
     /// <summary>
@@ -49,7 +47,7 @@ public sealed class CoreEngine
     /// <summary>
     /// Gets the core of the engine of the running code, or <see cref="Default"/>.
     /// </summary>
-    public static CoreEngine Current => EngineScope.Current is { } engine ? For(engine) : Default;
+    public static CoreEngine Current => EngineScope.Resolve() is { } engine ? For(engine) : Default;
 
     /// <summary>
     /// Gets the name: the one of the engine, or <c>Default</c>.
@@ -138,12 +136,6 @@ public sealed class CoreEngine
         return $"Core of {Name}";
     }
 
-    internal TRegistry Typed<TRegistry>()
-        where TRegistry : class, new()
-    {
-        return (TRegistry)_typedRegistries.GetOrAdd(typeof(TRegistry), static _ => new TRegistry());
-    }
-
     /// <summary>
     /// The base failure levels of one engine.
     /// </summary>
@@ -181,36 +173,59 @@ public sealed class CoreEngine
     }
 
     /// <summary>
-    /// The registries of one engine.
+    /// The registries of one engine: one per type, made the first time it is asked for.
     /// </summary>
+    /// <remarks>
+    /// <para><see cref="Of{T}"/> is the registry of a type; a <c>Player</c> derived from <c>Actor</c> is found in the
+    /// registry of actors. <see cref="RegisterImplicitly"/> is what the base classes of Stellar.Core call for a new
+    /// object: it goes into the registry of its home type and of every type of its hierarchy marked with
+    /// <see cref="StellarRegistryAttribute"/>.</para>
+    /// </remarks>
     public sealed class CoreRegistries
     {
-        private readonly CoreEngine _engine;
+        private readonly ConcurrentDictionary<Type, IRegistry> _registries = new();
 
-        internal CoreRegistries(CoreEngine engine)
+        internal CoreRegistries()
         {
-            _engine = engine;
         }
-
-        /// <summary>Gets the registry of identifiers.</summary>
-
-        /// <summary>Gets the registry of labels.</summary>
 
         /// <summary>Gets the registry of data containers.</summary>
-        public IRegistry<IDataContainer> DataContainers => _engine.Typed<DataContainerRegistry>();
+        public IRegistry<IDataContainer> DataContainers => Of<IDataContainer>();
 
-        /// <summary>Gets the registry of meta quants of one type.</summary>
-        public IRegistry<TMeta> MetaQuants<TMeta>()
-            where TMeta : class, IRegistrableMetaQuant
+        /// <summary>Gets the registries made so far.</summary>
+        public IReadOnlyCollection<IRegistry> All => _registries.Values.ToArray();
+
+        /// <summary>Gets the registry of a type.</summary>
+        /// <typeparam name="T">The type: a base class or a contract.</typeparam>
+        public IRegistry<T> Of<T>()
+            where T : class, IRegistrableQuantumObject
         {
-            return _engine.Typed<MetaQuantsRegistry<TMeta>>();
+            return (IRegistry<T>)_registries.GetOrAdd(typeof(T), static _ => new Registry<T>());
         }
 
-        /// <summary>Gets the registry of quants of one type.</summary>
-        public IRegistry<T> Quants<T>()
-            where T : class, IRegistrableQuant
+        /// <summary>Gets the registry of a type known at run time.</summary>
+        /// <param name="type">The type: a base class or a contract of registrable objects.</param>
+        public IRegistry Of(Type type)
         {
-            return _engine.Typed<QuantsRegistry<T>>();
+            RegistryTypes.Validate(type);
+            return _registries.GetOrAdd(type, static type =>
+                (IRegistry)Activator.CreateInstance(typeof(Registry<>).MakeGenericType(type))!);
+        }
+
+        /// <summary>
+        /// Registers a new object where it belongs: in the registry of its home type, and of every type of its
+        /// hierarchy marked with <see cref="StellarRegistryAttribute"/>.
+        /// </summary>
+        /// <param name="item">The object.</param>
+        /// <param name="home">The type it is registered as, whatever its hierarchy; <c>null</c> for none.</param>
+        public void RegisterImplicitly(IRegistrableQuantumObject item, Type? home)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+
+            if (home is not null) ((IUntypedRegistry)Of(home)).Register(item);
+            foreach (var type in RegistryTypes.MarkedIn(item.GetType()))
+                if (type != home)
+                    ((IUntypedRegistry)Of(type)).Register(item);
         }
     }
 }

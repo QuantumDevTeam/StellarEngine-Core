@@ -11,7 +11,7 @@ namespace Stellar.Core.Native;
 /// <remarks>
 /// <para>Every engine instance has its own context (<see cref="For"/>), so two engines in one process never see
 /// each other's identifiers or labels. <see cref="Current"/> is the context of the engine of the running code
-/// (<see cref="EngineScope"/>), or <see cref="Default"/> outside any engine.</para>
+/// (<see cref="EngineScope"/>), or <see cref="Default"/> outside any engine as <see cref="EngineScope.Detached"/> allows.</para>
 /// <para>A context made with the constructor belongs to its maker, who disposes it.</para>
 /// </remarks>
 public sealed unsafe class CoreContext
@@ -46,7 +46,7 @@ public sealed unsafe class CoreContext
     public static CoreContext Default { get; } = new(0, false);
 
     /// <summary>Gets the context of the engine of the running code, or the default one.</summary>
-    public static CoreContext Current => EngineScope.Current is { } engine ? For(engine) : Default;
+    public static CoreContext Current => EngineScope.Resolve() is { } engine ? For(engine) : Default;
 
     /// <summary>Gets whether this is the default context.</summary>
     public bool IsDefault => !_owned;

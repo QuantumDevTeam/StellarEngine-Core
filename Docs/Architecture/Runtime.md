@@ -87,6 +87,27 @@ new threads, and whatever is reached without a context finds the right instance 
 registries of the native core. `Stellar.Core.Global.Engine` is a static view of the current one. When the Core module
 of an engine stops, its `CoreEngine` and native registries go with it. See [Native core](NativeAbi.md#contexts).
 
+Code outside any engine is what `EngineScope.Detached` says: tools and tests get the default instance of the
+process; an application run by `StellarRuntime.Run` gets an error instead (`DetachedPolicy.Throw`), since all its code
+belongs to an engine. Code reached without the scope (a native callback, an event of the operating system, work
+queued with an `Unsafe` API) enters the scope of its engine itself: `using (EngineScope.Enter(engine)) { ... }`.
+
+## Registries
+
+Each engine has one registry per type, made the first time it is asked for: `CoreEngine.Registry.Of<T>()`, or
+`Engine.Registry.Of<T>()` for the current engine. A registry holds objects by their identifiers.
+
+- **Only a registry registers.** `registry.Register(item)` and `registry.Pop(id)`; the registry tells the object,
+  whose `Registrations` lists where it is. Disposing an object removes it from every registry it is in, of whatever
+  engine. Any code can make a registry of its own: `new Registry<T>()`.
+- **Base types.** The registry of a base class or a contract holds the derived objects: `class Actor :
+  RegistrableQuant<Actor, ActorMeta>` puts a `Player : Actor` into the registry of actors, where
+  `actors.Get(id)` finds it as an actor and `actors.Get<Player>(id)` as a player (or `null`, never a wrong cast).
+- **Implicit registration.** A new `RegistrableQuant`, `RegistrableMetaQuant` or data container asks the registries
+  of the current engine to take it: into the registry of its home type (the first type parameter), and of every
+  type of its hierarchy marked `[StellarRegistry]`. `protected override bool RegistersImplicitly => false` turns it
+  off for a class, which then registers its objects itself.
+
 The runtime publishes its part in the services before Stellar.Core starts: `IEngineInstance`, `IEngineControl`,
 `IMainThreadDispatcher`, `ITimeSystem`, `IMainLoops` and `IMainLoop` (the primary loop).
 

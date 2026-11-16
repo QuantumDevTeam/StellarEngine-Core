@@ -24,7 +24,7 @@ public abstract class FailureLevel
         Label = new Label(UID, name);
 
         _dispatcherMeta = dispatcherMeta;
-        Register(_dispatcherMeta.FailureLevels);
+        _dispatcherMeta.FailureLevels.Set(this);
     }
 
     /// <inheritdoc/>
@@ -48,27 +48,11 @@ public abstract class FailureLevel
     /// <inheritdoc/>
     public abstract bool ShouldTerminate { get; }
 
-    /// <inheritdoc/>
-    public void Register(IQuantumObject registry)
-    {
-        if (registry is not DataContainer<IFailureLevel> container)
-            throw new ArgumentException("Failure levels are stored in a container of failure levels", nameof(registry));
-
-        container.Set(this);
-    }
-
-    /// <inheritdoc/>
-    public void Unregister(IQuantumObject registry)
-    {
-        if (registry is not DataContainer<IFailureLevel> container)
-            throw new ArgumentException("Failure levels are stored in a container of failure levels", nameof(registry));
-
-        container.Pop(UID);
-    }
-
-    /// <inheritdoc/>
+    /// <summary>
+    /// Takes the level out of the failure levels of its dispatcher.
+    /// </summary>
     public void Dispose()
     {
-        Unregister(_dispatcherMeta.FailureLevels);
+        _dispatcherMeta.FailureLevels.Pop(UID);
     }
 }

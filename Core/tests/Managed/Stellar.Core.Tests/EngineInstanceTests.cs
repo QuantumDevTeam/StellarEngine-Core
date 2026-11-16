@@ -90,15 +90,15 @@ public class EngineInstanceTests
             service = new Service();
         }
 
-        CoreEngine.For(first).Registry.Quants<Service>().Exists(service.UID).Should().BeTrue();
-        CoreEngine.For(second).Registry.Quants<Service>().Exists(service.UID).Should().BeFalse();
+        CoreEngine.For(first).Registry.Of<Service>().Exists(service.UID).Should().BeTrue();
+        CoreEngine.For(second).Registry.Of<Service>().Exists(service.UID).Should().BeFalse();
 
         using (EngineScope.Enter(second))
         {
             service.Dispose();
         }
 
-        CoreEngine.For(first).Registry.Quants<Service>().Exists(service.UID).Should().BeFalse();
+        CoreEngine.For(first).Registry.Of<Service>().Exists(service.UID).Should().BeFalse();
 
         CoreEngine.Release(first);
         CoreEngine.Release(second);

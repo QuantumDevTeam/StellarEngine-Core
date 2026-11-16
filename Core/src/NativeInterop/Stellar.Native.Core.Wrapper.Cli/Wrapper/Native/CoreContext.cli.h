@@ -27,7 +27,7 @@ namespace Stellar::Core::Native
     /// <remarks>
     /// <para>Every engine instance has its own context (<see cref="For"/>), so two engines in one process never see
     /// each other's identifiers or labels. <see cref="Current"/> is the context of the engine of the running code
-    /// (<see cref="Stellar::Kernel::Lifecycle::EngineScope"/>), or <see cref="Default"/> outside any engine.</para>
+    /// (<see cref="Stellar::Kernel::Lifecycle::EngineScope"/>), or <see cref="Default"/> outside any engine as <see cref="Stellar::Kernel::Lifecycle::EngineScope::Detached"/> allows.</para>
     /// <para>A context made with the constructor belongs to its maker, who disposes it.</para>
     /// </remarks>
     public ref class CoreContext sealed : IDisposable

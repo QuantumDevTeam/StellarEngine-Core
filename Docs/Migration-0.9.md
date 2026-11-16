@@ -40,6 +40,28 @@ A label is an identifier and a name, a value. There is no registry of labels and
 | `CoreContext.Labels`, `Engine.Registry.Labels` | nothing |
 | `IEventType : ILabel` | `IEventType : IMetaQuant, ILabeled` |
 
+## Registries
+
+Objects no longer register themselves: registries do, and tell them.
+
+| Before | Now |
+|---|---|
+| `IRegistrableQuantumObject.Register(registry)`, `Unregister(registry)` | `registry.Register(item)`, `registry.Pop(id)` or `Unregister(id)`; the object lists its registries in `Registrations` |
+| `IRegistrableQuantumObject : IQuantumObject` | `: IIdentifiableQuantumObject`, with `Registrations` |
+| `CoreEngine.Registry.Quants<T>()`, `MetaQuants<T>()` | `CoreEngine.Registry.Of<T>()`, for any registrable type, bases and contracts too |
+| `QuantsRegistry<T>`, `MetaQuantsRegistry<T>`, `DataContainerRegistry`, `ConcurrentRegistry<T>` | `Registry<T>` |
+| a cast after `registry.Get(id)` | `registry.Get<TDerived>(id)`: `null` when the object is not one |
+| a quant in the registry of its exact type | in the registry of its home type and of every type of its hierarchy marked `[StellarRegistry]` |
+| `IFailureLevel : IRegistrableQuantumObject` | `IFailureLevel : ILabeled, IDisposable`: a level lives in the container of its dispatcher |
+
+`RegistersImplicitly` turns the implicit registration off for a class.
+
+## Code outside any engine
+
+`EngineScope.Resolve()` is what Stellar.Core and the wrappers use to find the current engine. Outside any engine it
+gives the default instance of the process (`DetachedPolicy.Default`, tools and tests), or throws
+(`DetachedPolicy.Throw`), which `StellarRuntime.Run` sets for a running application.
+
 ## The file system
 
 The contracts of `Stellar.Kernel.FileSystem` are new: `FilePath`, `DomainScheme`, `IFileDriver`, `IDomain`,
