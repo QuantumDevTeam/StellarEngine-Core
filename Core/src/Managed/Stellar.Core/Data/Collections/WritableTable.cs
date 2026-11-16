@@ -21,7 +21,7 @@ public class WritableTable<T>
     }
 
     /// <inheritdoc/>
-    public WritableTable(MetaQuant meta, Dictionary<IIdentifier, T> data)
+    public WritableTable(MetaQuant meta, Dictionary<Identifier, T> data)
         : base(meta, data)
     {
     }
@@ -47,16 +47,16 @@ public class WritableTable<T>
     /// <inheritdoc/>
     public override bool Set(IIdentifiableQuantumObject obj)
     {
-        if (obj is not T typed || !Native.Add(UID.UID, obj.UID.UID))
+        if (obj is not T typed || !Native.Add(UID, obj.UID))
             return false;
 
         return Data.TryAdd(obj.UID, typed, true);
     }
 
     /// <inheritdoc/>
-    public override T? Pop(IIdentifier id)
+    public override T? Pop(Identifier id)
     {
-        if (id is null || !Native.Remove(UID.UID, id.UID))
+        if (!Native.Remove(UID, id))
             return default;
 
         Data.TryRemove(id, out var quant);

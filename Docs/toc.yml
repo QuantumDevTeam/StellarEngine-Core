@@ -34,6 +34,8 @@
       href: Reference/Sdk.Properties.md
     - name: Diagnostics
       href: Reference/Diagnostics.md
+    - name: Migrating to 0.9
+      href: Migration-0.9.md
     - name: Migrating to 0.8
       href: Migration-0.8.md
 - name: API

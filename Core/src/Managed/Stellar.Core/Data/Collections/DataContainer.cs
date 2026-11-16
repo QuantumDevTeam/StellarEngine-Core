@@ -45,13 +45,13 @@ public abstract class DataContainer<T>
         ArgumentNullException.ThrowIfNull(data);
 
         Data = data;
-        Native.Create(UID.UID);
+        Native.Create(UID);
 
         foreach (var item in data.GetSnapshot())
-            Native.Add(UID.UID, item.UID.UID);
+            Native.Add(UID, item.UID);
 
         if (IsReadOnly)
-            Native.Seal(UID.UID);
+            Native.Seal(UID);
 
         Register(_home);
     }
@@ -61,7 +61,7 @@ public abstract class DataContainer<T>
     /// </summary>
     /// <param name="meta">A meta quant of this container.</param>
     /// <param name="data">Initial data stored in a dictionary.</param>
-    protected DataContainer(MetaQuant meta, Dictionary<IIdentifier, T> data)
+    protected DataContainer(MetaQuant meta, Dictionary<Identifier, T> data)
         : this(meta, new FastConcurrentIdentifierMap<T>(data))
     {
     }
@@ -88,7 +88,7 @@ public abstract class DataContainer<T>
     /// </summary>
     /// <param name="identifier">The identifier of the container.</param>
     /// <returns>The container, or <c>null</c> if it is not registered.</returns>
-    public static IDataContainer? GetContainer(IIdentifier identifier)
+    public static IDataContainer? GetContainer(Identifier identifier)
     {
         return Global.CoreEngine.Current.Registry.DataContainers.Get(identifier);
     }
@@ -96,7 +96,7 @@ public abstract class DataContainer<T>
     #region Item support
 
     /// <inheritdoc/>
-    public abstract IIdentifiableQuantumObject? Get(IIdentifier identifier);
+    public abstract IIdentifiableQuantumObject? Get(Identifier identifier);
 
     /// <summary>
     /// Stores a quantum object by its identifier.
@@ -113,7 +113,7 @@ public abstract class DataContainer<T>
     /// </summary>
     /// <param name="id">The unique identifier of the object.</param>
     /// <returns>The object if found; otherwise, <c>default</c>.</returns>
-    public virtual T? Pop(IIdentifier id)
+    public virtual T? Pop(Identifier id)
     {
         return default;
     }
@@ -123,7 +123,7 @@ public abstract class DataContainer<T>
     /// </summary>
     /// <param name="key">The unique identifier of the object.</param>
     /// <exception cref="KeyNotFoundException">Thrown if <paramref name="key"/> is not found in the container.</exception>
-    public T this[IIdentifier key]
+    public T this[Identifier key]
     {
         get => Get(key) is T value ? value : throw new KeyNotFoundException($"{key} is not in the container");
         set => Set(value);
@@ -146,9 +146,9 @@ public abstract class DataContainer<T>
     }
 
     /// <inheritdoc/>
-    public bool ContainsKey(IIdentifier key)
+    public bool ContainsKey(Identifier key)
     {
-        return key is not null && Native.Contains(UID.UID, key.UID);
+        return Native.Contains(UID, key);
     }
 
     /// <inheritdoc/>
@@ -158,7 +158,7 @@ public abstract class DataContainer<T>
     }
 
     /// <inheritdoc/>
-    public int Count => Native.Count(UID.UID);
+    public int Count => Native.Count(UID);
 
     /// <inheritdoc/>
     public bool IsEmpty => Count == 0;
@@ -171,7 +171,7 @@ public abstract class DataContainer<T>
     /// <summary>
     /// Gets the identifiers of the items, as the native side knows them. This is what is passed to native systems.
     /// </summary>
-    public Guid[] Identifiers => Native.Items(UID.UID);
+    public Identifier[] Identifiers => Native.Items(UID);
 
     /// <summary>
     /// Clears the container.
@@ -179,7 +179,7 @@ public abstract class DataContainer<T>
     /// <returns><c>false</c> if the container is read-only.</returns>
     public bool Clear()
     {
-        if (!Native.Clear(UID.UID))
+        if (!Native.Clear(UID))
             return false;
 
         Data.Clear();
@@ -239,6 +239,6 @@ public abstract class DataContainer<T>
     public void Dispose()
     {
         Unregister();
-        Native.Destroy(UID.UID);
+        Native.Destroy(UID);
     }
 }

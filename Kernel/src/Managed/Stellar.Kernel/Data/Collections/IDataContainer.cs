@@ -28,14 +28,14 @@ public interface IDataContainer
     /// </summary>
     /// <param name="id">The unique identifier of the object.</param>
     /// <returns>The object if found; otherwise, <c>null</c>.</returns>
-    IIdentifiableQuantumObject? Get(IIdentifier id);
+    IIdentifiableQuantumObject? Get(Identifier id);
 
     /// <summary>
     /// Checks whether the container has an object with the specified key.
     /// </summary>
     /// <param name="key">The identifier to check.</param>
     /// <returns><c>true</c> if an object with the given key exists; otherwise, <c>false</c>.</returns>
-    bool ContainsKey(IIdentifier key);
+    bool ContainsKey(Identifier key);
 
     /// <summary>
     /// Checks whether the container holds the specified object instance.

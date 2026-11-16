@@ -13,9 +13,9 @@ public class FastConcurrentIdentifierMapTests
     public void InitialData_IsVisibleInSnapshot()
     {
         // Regression: the snapshot stayed empty until the first refresh
-        var key = Identifier.Create();
+        var key = Identifier.New();
         var map = new FastConcurrentIdentifierMap<string>(
-            [new KeyValuePair<IIdentifier, string>(key, "value")]);
+            [new KeyValuePair<Identifier, string>(key, "value")]);
 
         map.GetSnapshot().Should().Equal("value");
         map.Should().Equal("value");
@@ -26,7 +26,7 @@ public class FastConcurrentIdentifierMapTests
     {
         // Regression: this used to throw LockRecursionException
         var map = new FastConcurrentIdentifierMap<string>();
-        var key = Identifier.Create();
+        var key = Identifier.New();
         map.TryAdd(key, "value");
         map.RefreshSnapshot();
 
@@ -41,7 +41,7 @@ public class FastConcurrentIdentifierMapTests
     {
         // Regression: this used to throw LockRecursionException
         var map = new FastConcurrentIdentifierMap<string>();
-        map.TryAdd(Identifier.Create(), "value", true);
+        map.TryAdd(Identifier.New(), "value", true);
 
         map.Clear();
 
@@ -58,8 +58,8 @@ public class FastConcurrentIdentifierMapTests
     {
         var map = new FastConcurrentIdentifierMap<string>();
 
-        map.TryAdd(Identifier.Create(), "hot", true);
-        map.TryAdd(Identifier.Create(), "cold");
+        map.TryAdd(Identifier.New(), "hot", true);
+        map.TryAdd(Identifier.New(), "cold");
 
         var seen = new List<string>();
         map.ForEachReadOnly(seen.Add);
@@ -71,7 +71,7 @@ public class FastConcurrentIdentifierMapTests
     public void Refresh_MovesHotItemsToSnapshot_WithoutDuplicates()
     {
         var map = new FastConcurrentIdentifierMap<string>();
-        map.TryAdd(Identifier.Create(), "hot", true);
+        map.TryAdd(Identifier.New(), "hot", true);
 
         map.RefreshSnapshot();
 
@@ -84,7 +84,7 @@ public class FastConcurrentIdentifierMapTests
     public void RemovedHotItem_IsNotVisibleAnymore()
     {
         var map = new FastConcurrentIdentifierMap<string>();
-        var key = Identifier.Create();
+        var key = Identifier.New();
         map.TryAdd(key, "hot", true);
 
         map.TryRemove(key, out _);
@@ -98,12 +98,12 @@ public class FastConcurrentIdentifierMapTests
     public void Keys_AreComparedByValue()
     {
         var map = new FastConcurrentIdentifierMap<string>();
-        var uid = Guid.NewGuid();
+        var uid = Identifier.New();
 
-        map.TryAdd(new Identifier(uid), "value");
+        map.TryAdd(Identifier.Parse(uid.ToString()), "value");
 
-        map.ContainsKey(new Identifier(uid)).Should().BeTrue();
-        map.TryAdd(new Identifier(uid), "other").Should().BeFalse();
+        map.ContainsKey(Identifier.Parse(uid.ToString())).Should().BeTrue();
+        map.TryAdd(Identifier.Parse(uid.ToString()), "other").Should().BeFalse();
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class FastConcurrentIdentifierMapTests
 
         Parallel.For(0, 2000, index =>
         {
-            var key = Identifier.Create();
+            var key = Identifier.New();
 
             map.TryAdd(key, index, index % 2 == 0);
             map.ForEachUntil(_ => false);
@@ -133,7 +133,7 @@ public class DataContainerTests
 {
     private sealed class Item : IIdentifiableQuantumObject
     {
-        public IIdentifier UID { get; } = Identifier.Create();
+        public Identifier UID { get; } = Identifier.New();
     }
 
     [Fact]
@@ -181,7 +181,7 @@ public class DataContainerTests
     public void ConstantTable_RejectsChanges()
     {
         var item = new Item();
-        var table = new ConstantTable<Item>(new MetaQuant(), new Dictionary<IIdentifier, Item> { [item.UID] = item });
+        var table = new ConstantTable<Item>(new MetaQuant(), new Dictionary<Identifier, Item> { [item.UID] = item });
 
         table.Set(new Item()).Should().BeFalse();
         table.Pop(item.UID).Should().BeNull();
@@ -194,7 +194,7 @@ public class DataContainerTests
     {
         var table = new WritableTable<Item>();
 
-        var action = () => table[Identifier.Create()];
+        var action = () => table[Identifier.New()];
 
         action.Should().Throw<KeyNotFoundException>();
     }

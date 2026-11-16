@@ -13,59 +13,43 @@ public abstract class ConcurrentRegistry<T>
     : IRegistry<T>
     where T : class, IRegistrableQuantumObject
 {
-    private readonly ConcurrentDictionary<Guid, T> _items = new();
+    private readonly ConcurrentDictionary<Identifier, T> _items = new();
 
     /// <summary>
     /// Gets the identifier an object is stored under.
     /// </summary>
-    protected abstract IIdentifier IdentifierOf(T obj);
+    protected abstract Identifier IdentifierOf(T obj);
 
     /// <inheritdoc/>
-    public bool Exists(IIdentifier id)
+    public bool Exists(Identifier id)
     {
-        return id is not null && _items.ContainsKey(id.UID);
+        return _items.ContainsKey(id);
     }
 
     /// <inheritdoc/>
     public virtual bool Register(T obj)
     {
         ArgumentNullException.ThrowIfNull(obj);
-        return _items.TryAdd(IdentifierOf(obj).UID, obj);
+        return _items.TryAdd(IdentifierOf(obj), obj);
     }
 
     /// <inheritdoc/>
-    public T? Get(IIdentifier id)
+    public T? Get(Identifier id)
     {
-        return id is null ? null : Get(id.UID);
-    }
-
-    /// <summary>
-    /// Retrieves a registered object by the value of its identifier.
-    /// </summary>
-    public T? Get(Guid uid)
-    {
-        return _items.GetValueOrDefault(uid);
+        return _items.GetValueOrDefault(id);
     }
 
     /// <inheritdoc/>
-    public T? Pop(IIdentifier id)
+    public virtual T? Pop(Identifier id)
     {
-        return id is null ? null : Pop(id.UID);
-    }
-
-    /// <summary>
-    /// Removes and returns a registered object by the value of its identifier.
-    /// </summary>
-    public virtual T? Pop(Guid uid)
-    {
-        return _items.TryRemove(uid, out var obj) ? obj : null;
+        return _items.TryRemove(id, out var obj) ? obj : null;
     }
 
     /// <inheritdoc/>
     public int Size => _items.Count;
 
     /// <inheritdoc/>
-    public ICollection<IIdentifier> Keys => _items.Values.Select(IdentifierOf).ToArray();
+    public ICollection<Identifier> Keys => _items.Keys.ToArray();
 
     /// <inheritdoc/>
     public ICollection<T> Values => _items.Values.ToArray();

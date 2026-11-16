@@ -306,7 +306,8 @@ public class EntryPointTests
         using var entry = new EntryPoint(new RuntimeConfiguration());
 
         entry.Label.Name.Should().Be("S.C/MainEntry");
-        entry.Meta.Should().BeSameAs(entry.Label);
+        entry.Meta.UID.Should().Be(entry.Label.UID);
+        entry.UID.Should().Be(entry.Label.UID);
         entry.Metas.Should().ContainSingle();
     }
 }

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Stellar.Core.Data.Registry;
 using Stellar.Core.Modules;
 using Stellar.Core.Native;
+using Stellar.Kernel;
 using Stellar.Kernel.Interop;
 using Stellar.Kernel.Versioning;
 
@@ -72,7 +73,7 @@ public class ContractTests
     {
         Unsafe.SizeOf<ContractVersion>().Should().Be(8);
         Unsafe.SizeOf<NativeHandle>().Should().Be(8);
-        Unsafe.SizeOf<Guid>().Should().Be(16);
+        Unsafe.SizeOf<Identifier>().Should().Be(16);
     }
 
     [Fact]
@@ -94,65 +95,35 @@ public class WrapperTests
         NativeCore.Wrapper.Should().Be(Build.Wrapper);
     }
 
-    [NativeFact]
-    public void Identifier_LooksTheSameOnBothSides()
+    [Fact]
+    public void Identifier_HasTheBytesOfTheNativeCore()
     {
-        // The real proof of the layout: System.Guid and the native identifier agree on bytes and on text
-        var managed = Guid.Parse("00112233-4455-6677-8899-aabbccddeeff");
-
-        new Identifier(managed).ToCanonicalString().Should().Be(managed.ToString());
-        Identifier.Parse(managed.ToString())!.UID.Should().Be(managed);
-
-        var native = Identifier.Create();
-
-        native.UID.Should().NotBe(Guid.Empty);
-        native.ToCanonicalString().Should().Be(native.UID.ToString());
+        // The vector of the native tests: the same text gives the same 16 bytes on both sides
+        Identifier.Parse("00112233-4455-6677-8899-aabbccddeeff").ToBytes().Should().Equal(
+            0x33, 0x22, 0x11, 0x00, 0x55, 0x44, 0x77, 0x66, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF);
     }
 
     [NativeFact]
-    public void Parse_RejectsMalformedText()
+    public void Identifiers_CrossIntoTheNativeCoreAsTheyAre()
     {
-        Identifier.Parse("not a guid").Should().BeNull();
-        Identifier.Parse(string.Empty).Should().BeNull();
-    }
+        // In as an identifier of the Kernel, back from the native core: nothing changed on the way
+        var registry = CoreContext.Current.Containers;
+        var container = Identifier.New();
+        var item = Identifier.Parse("00112233-4455-6677-8899-aabbccddeeff");
 
-    [NativeFact]
-    public void IdentifierRegistry_LivesInTheNativeCore()
-    {
-        var registry = CoreContext.Current.Identifiers;
-        var id = new Identifier(Guid.NewGuid());
-        var size = registry.Size;
-
-        registry.Register(id).Should().BeTrue();
-        registry.Register(id).Should().BeFalse();
-        registry.Exists(id).Should().BeTrue();
-        registry.Size.Should().Be(size + 1);
-
-        registry.Pop(id).Should().Be(id);
-        registry.Pop(id).Should().BeNull();
-        id.IsRegistered.Should().BeFalse();
-    }
-
-    [NativeFact]
-    public void Labels_SupportUnicode()
-    {
-        var name = $"Метка/{Guid.NewGuid()}";
-        var label = Label.Create(name)!;
-
-        Label.Get(name).Should().Be(label);
-        Label.Get(name)!.Name.Should().Be(name);
-
-        label.Dispose();
-        Label.Get(name).Should().BeNull();
+        registry.Create(container).Should().BeTrue();
+        registry.Add(container, item).Should().BeTrue();
+        registry.Items(container).Should().Equal(item);
+        registry.Destroy(container).Should().BeTrue();
     }
 
     [NativeFact]
     public void Containers_KeepMembersAndBranches()
     {
         var registry = CoreContext.Current.Containers;
-        var container = Guid.NewGuid();
-        var item = Guid.NewGuid();
-        var branch = Guid.NewGuid();
+        var container = Identifier.New();
+        var item = Identifier.New();
+        var branch = Identifier.New();
 
         // A branch is a container too: the one of a sub-roster
         registry.Create(branch).Should().BeTrue();
@@ -178,15 +149,15 @@ public class WrapperTests
     public void SealedContainer_RejectsChanges()
     {
         var registry = CoreContext.Current.Containers;
-        var container = Guid.NewGuid();
-        var item = Guid.NewGuid();
+        var container = Identifier.New();
+        var item = Identifier.New();
 
         registry.Create(container);
         registry.Add(container, item);
         registry.Seal(container);
 
         registry.IsSealed(container).Should().BeTrue();
-        registry.Add(container, Guid.NewGuid()).Should().BeFalse();
+        registry.Add(container, Identifier.New()).Should().BeFalse();
         registry.Remove(container, item).Should().BeFalse();
         registry.Count(container).Should().Be(1);
 
@@ -196,7 +167,7 @@ public class WrapperTests
     [NativeFact]
     public void UnknownContainer_IsAFailure()
     {
-        var count = () => CoreContext.Current.Containers.Count(Guid.NewGuid());
+        var count = () => CoreContext.Current.Containers.Count(Identifier.New());
 
         count.Should().Throw<NativeCoreException>().Where(exception => exception.Result == NativeResult.NotFound);
     }

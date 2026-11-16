@@ -193,10 +193,8 @@ public sealed class CoreEngine
         }
 
         /// <summary>Gets the registry of identifiers.</summary>
-        public IRegistry<Identifier> Identifiers => _engine.Native.Identifiers;
 
         /// <summary>Gets the registry of labels.</summary>
-        public IRegistry<Label> Labels => _engine.Native.Labels;
 
         /// <summary>Gets the registry of data containers.</summary>
         public IRegistry<IDataContainer> DataContainers => _engine.Typed<DataContainerRegistry>();

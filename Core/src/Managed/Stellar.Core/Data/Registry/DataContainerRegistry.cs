@@ -17,7 +17,7 @@ public sealed class DataContainerRegistry
     }
 
     /// <inheritdoc/>
-    protected override IIdentifier IdentifierOf(IDataContainer obj)
+    protected override Identifier IdentifierOf(IDataContainer obj)
     {
         return obj.UID;
     }

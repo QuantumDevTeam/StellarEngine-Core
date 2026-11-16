@@ -21,7 +21,7 @@ public class ConstantTable<T>
     }
 
     /// <inheritdoc/>
-    public ConstantTable(MetaQuant meta, Dictionary<IIdentifier, T> data)
+    public ConstantTable(MetaQuant meta, Dictionary<Identifier, T> data)
         : base(meta, data)
     {
     }
@@ -43,7 +43,7 @@ public class ConstantTable<T>
     #region item support
 
     /// <inheritdoc/>
-    public override IIdentifiableQuantumObject? Get(IIdentifier identifier)
+    public override IIdentifiableQuantumObject? Get(Identifier identifier)
     {
         return Data.GetValueOrDefault(identifier);
     }

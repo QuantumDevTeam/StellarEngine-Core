@@ -22,7 +22,7 @@ public class QuantTests
     private sealed class Service()
         : RegistrableQuant<Service, MetaQuant>(new MetaQuant());
 
-    private sealed class SharedMeta(IIdentifier id)
+    private sealed class SharedMeta(Identifier id)
         : RegistrableMetaQuant<SharedMeta>(id);
 
     [Fact]
@@ -31,7 +31,7 @@ public class QuantTests
         var meta = new PlayerMeta();
         var player = new Player(meta);
 
-        player.UID.Should().BeSameAs(meta.UID);
+        player.UID.Should().Be(meta.UID);
         player.Meta.Should().BeSameAs(meta);
         player.MetaQuant.Should().BeSameAs(meta);
     }
@@ -102,7 +102,7 @@ public class QuantTests
     [Fact]
     public void RegistrableMetaQuant_ComesAndGoesFromItsRegistry()
     {
-        var meta = new SharedMeta(Identifier.Create());
+        var meta = new SharedMeta(Identifier.New());
 
         CoreEngine.Current.Registry.MetaQuants<SharedMeta>().Get(meta.UID).Should().BeSameAs(meta);
 

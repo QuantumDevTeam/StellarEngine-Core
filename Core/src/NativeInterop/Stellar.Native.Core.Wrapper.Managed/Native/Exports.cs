@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using Stellar.Kernel;
 using Stellar.Kernel.Interop;
 using Stellar.Kernel.Versioning;
 
@@ -12,7 +13,7 @@ namespace Stellar.Core.Native;
 /// The exports of Stellar.Native.Core.Wrapper.PInvoke and the conventions around them.
 /// </summary>
 /// <remarks>
-/// Only blittable types cross the boundary, so no marshalling happens: a <see cref="Guid"/> has the memory layout of
+/// Only blittable types cross the boundary, so no marshalling happens: a <see cref="Identifier"/> has the memory layout of
 /// the native identifier, and strings travel as UTF-8 views.
 /// </remarks>
 internal static unsafe partial class Exports
@@ -34,37 +35,12 @@ internal static unsafe partial class Exports
     internal delegate NativeResult TextReader(byte* buffer, nuint capacity, nuint* required);
 
     /// <summary>A call that fills a buffer of identifiers.</summary>
-    internal delegate NativeResult IdentifierReader(Guid* buffer, nuint capacity, nuint* required);
+    internal delegate NativeResult IdentifierReader(Identifier* buffer, nuint capacity, nuint* required);
 
     internal static bool Ask(NativeResult result, int answer)
     {
         Check(result);
         return answer != 0;
-    }
-
-    internal static string ReadText(Guid* identifier, delegate*<Guid*, byte*, nuint, nuint*, NativeResult> reader)
-    {
-        Span<byte> stackBuffer = stackalloc byte[128];
-
-        fixed (byte* buffer = stackBuffer)
-        {
-            nuint required;
-            var result = reader(identifier, buffer, (nuint)stackBuffer.Length, &required);
-
-            if (result == NativeResult.Ok)
-                return Encoding.UTF8.GetString(buffer, (int)required);
-
-            if (result != NativeResult.BufferTooSmall)
-                throw new NativeCoreException(result, LastError());
-
-            var heapBuffer = new byte[(int)required + 1];
-
-            fixed (byte* retry = heapBuffer)
-            {
-                Check(reader(identifier, retry, (nuint)heapBuffer.Length, &required));
-                return Encoding.UTF8.GetString(retry, (int)required);
-            }
-        }
     }
 
     internal static string ReadText(TextReader reader)
@@ -92,7 +68,7 @@ internal static unsafe partial class Exports
         }
     }
 
-    internal static Guid[] ReadIdentifiers(IdentifierReader reader)
+    internal static Identifier[] ReadIdentifiers(IdentifierReader reader)
     {
         while (true)
         {
@@ -105,9 +81,9 @@ internal static unsafe partial class Exports
             if (probe != NativeResult.BufferTooSmall)
                 throw new NativeCoreException(probe, LastError());
 
-            var result = new Guid[(int)required];
+            var result = new Identifier[(int)required];
 
-            fixed (Guid* buffer = result)
+            fixed (Identifier* buffer = result)
             {
                 var read = reader(buffer, (nuint)result.Length, &required);
 
@@ -159,106 +135,67 @@ internal static unsafe partial class Exports
     // Identifiers
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_create(Guid* identifier);
+    internal static partial NativeResult stellar_identifier_create(Identifier* identifier);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_parse(StringView text, Guid* identifier, int* parsed);
+    internal static partial NativeResult stellar_identifier_parse(StringView text, Identifier* identifier, int* parsed);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_format(Guid* identifier, byte* buffer, nuint capacity,
+    internal static partial NativeResult stellar_identifier_format(Identifier* identifier, byte* buffer, nuint capacity,
         nuint* required);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_register(nint context, Guid* identifier, int* added);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_unregister(nint context, Guid* identifier, int* removed);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_contains(nint context, Guid* identifier, int* contained);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_count(nint context, nuint* count);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_identifier_snapshot(nint context, Guid* buffer, nuint capacity,
-        nuint* required);
-
-    // Labels
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_label_register(nint context, StringView name, Guid* identifier,
-        int* added);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult
-        stellar_label_find(nint context, StringView name, Guid* identifier, int* found);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_label_get_name(nint context, Guid* identifier, byte* buffer,
-        nuint capacity, nuint* required);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_label_unregister(nint context, Guid* identifier, int* removed);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_label_contains(nint context, Guid* identifier, int* contained);
-
-    [LibraryImport(Library)]
-    internal static partial NativeResult stellar_label_count(nint context, nuint* count);
 
     // Containers
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_create(nint context, Guid* container, int* created);
+    internal static partial NativeResult stellar_container_create(nint context, Identifier* container, int* created);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_destroy(nint context, Guid* container, int* destroyed);
+    internal static partial NativeResult stellar_container_destroy(nint context, Identifier* container, int* destroyed);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_exists(nint context, Guid* container, int* exists);
+    internal static partial NativeResult stellar_container_exists(nint context, Identifier* container, int* exists);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_seal(nint context, Guid* container);
+    internal static partial NativeResult stellar_container_seal(nint context, Identifier* container);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_is_sealed(nint context, Guid* container, int* isSealed);
+    internal static partial NativeResult stellar_container_is_sealed(nint context, Identifier* container, int* isSealed);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_add(nint context, Guid* container, Guid* item, int* added);
+    internal static partial NativeResult stellar_container_add(nint context, Identifier* container, Identifier* item, int* added);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_remove(nint context, Guid* container, Guid* item,
+    internal static partial NativeResult stellar_container_remove(nint context, Identifier* container, Identifier* item,
         int* removed);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_contains(nint context, Guid* container, Guid* item,
+    internal static partial NativeResult stellar_container_contains(nint context, Identifier* container, Identifier* item,
         int* contained);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_count(nint context, Guid* container, nuint* count);
+    internal static partial NativeResult stellar_container_count(nint context, Identifier* container, nuint* count);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_items(nint context, Guid* container, Guid* buffer,
+    internal static partial NativeResult stellar_container_items(nint context, Identifier* container, Identifier* buffer,
         nuint capacity, nuint* required);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_clear(nint context, Guid* container, int* cleared);
+    internal static partial NativeResult stellar_container_clear(nint context, Identifier* container, int* cleared);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_add_branch(nint context, Guid* container, Guid* branch,
+    internal static partial NativeResult stellar_container_add_branch(nint context, Identifier* container, Identifier* branch,
         int* added);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_remove_branch(nint context, Guid* container, Guid* branch,
+    internal static partial NativeResult stellar_container_remove_branch(nint context, Identifier* container, Identifier* branch,
         int* removed);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_contains_branch(nint context, Guid* container, Guid* branch,
+    internal static partial NativeResult stellar_container_contains_branch(nint context, Identifier* container, Identifier* branch,
         int* contained);
 
     [LibraryImport(Library)]
-    internal static partial NativeResult stellar_container_branches(nint context, Guid* container, Guid* buffer,
+    internal static partial NativeResult stellar_container_branches(nint context, Identifier* container, Identifier* buffer,
         nuint capacity, nuint* required);
 
     // Modules

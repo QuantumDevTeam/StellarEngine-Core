@@ -21,18 +21,17 @@ public abstract class FailureLevel
         ArgumentNullException.ThrowIfNull(dispatcherMeta);
 
         // Levels belong to their dispatcher and two dispatchers may both have an "Error": the label is not global.
-        Label = Core.Label.Create(name, UID, false)
-                ?? throw new ArgumentException("A failure level needs a name", nameof(name));
+        Label = new Label(UID, name);
 
         _dispatcherMeta = dispatcherMeta;
         Register(_dispatcherMeta.FailureLevels);
     }
 
     /// <inheritdoc/>
-    public IIdentifier UID { get; } = Identifier.CreateAndRegister();
+    public Identifier UID { get; } = Identifier.New();
 
     /// <inheritdoc/>
-    public ILabel Label { get; }
+    public Label Label { get; }
 
     /// <inheritdoc/>
     public abstract bool IsEnabled { get; set; }

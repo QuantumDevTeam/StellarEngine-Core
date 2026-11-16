@@ -24,7 +24,7 @@ public sealed class FailureCatch(
     private Action<IFailureCatch>? _finally;
 
     /// <inheritdoc/>
-    public IIdentifier UID { get; } = Identifier.Create();
+    public Identifier UID { get; } = Identifier.New();
 
     /// <inheritdoc/>
     public Exception? Caught { get; private set; }

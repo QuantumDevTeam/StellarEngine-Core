@@ -8,13 +8,13 @@ namespace Stellar.Core.Data.Collections;
 /// </summary>
 /// <typeparam name="T">The type of stored values.</typeparam>
 public sealed class ConcurrentIdentifierMap<T>
-    : ConcurrentDictionary<IIdentifier, T>
+    : ConcurrentDictionary<Identifier, T>
 {
     /// <summary>
     /// Creates an empty map.
     /// </summary>
     public ConcurrentIdentifierMap()
-        : base(IdentifierComparer.Instance)
+        : base()
     {
     }
 
@@ -22,8 +22,8 @@ public sealed class ConcurrentIdentifierMap<T>
     /// Creates a map with initial data.
     /// </summary>
     /// <param name="data">The initial data.</param>
-    public ConcurrentIdentifierMap(IEnumerable<KeyValuePair<IIdentifier, T>> data)
-        : base(data, IdentifierComparer.Instance)
+    public ConcurrentIdentifierMap(IEnumerable<KeyValuePair<Identifier, T>> data)
+        : base(data)
     {
     }
 }

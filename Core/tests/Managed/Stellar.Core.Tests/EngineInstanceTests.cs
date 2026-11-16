@@ -2,6 +2,7 @@ using Stellar.Core.EntryPoints;
 using Stellar.Core.Global;
 using Stellar.Core.Native;
 using Stellar.Core.Quantization;
+using Stellar.Kernel;
 using Stellar.Kernel.Configuration;
 using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.Lifecycle;
@@ -17,34 +18,27 @@ namespace Stellar.Core.Tests;
 public class EngineInstanceTests
 {
     [Fact]
-    public void TwoEngines_HaveTheirOwnLabels_ServicesAndRegistries()
+    public void TwoEngines_HaveTheirOwnServicesAndRegistries()
     {
         var editor = new FakeEngine("Editor");
         var game = new FakeEngine("Game");
-
-        Label? editorPlayer;
-        Label? gamePlayer;
+        var container = Identifier.New();
 
         using (EngineScope.Enter(editor))
         {
-            editorPlayer = Label.Create("Player");
+            CoreContext.Current.Containers.Create(container).Should().BeTrue();
             Engine.Services.Set(new Marker("editor"));
         }
 
         using (EngineScope.Enter(game))
         {
-            gamePlayer = Label.Create("Player");
             Engine.Services.Find<Marker>().Should().BeNull();
-            Label.Get("Player")!.UID.Should().Be(gamePlayer!.UID);
+            CoreContext.Current.Containers.Exists(container).Should().BeFalse();
         }
-
-        editorPlayer.Should().NotBeNull();
-        gamePlayer.Should().NotBeNull();
-        editorPlayer!.UID.Should().NotBe(gamePlayer!.UID);
 
         CoreEngine.For(editor).Services.Find<Marker>()!.Name.Should().Be("editor");
         CoreEngine.For(editor).Native.Should().NotBeSameAs(CoreEngine.For(game).Native);
-        CoreEngine.Default.Registry.Labels.Exists(editorPlayer.UID).Should().BeFalse();
+        CoreContext.Default.Containers.Exists(container).Should().BeFalse();
 
         CoreEngine.Release(editor).Should().BeTrue();
         CoreEngine.Release(game).Should().BeTrue();
@@ -115,12 +109,12 @@ public class EngineInstanceTests
     {
         var engine = new FakeEngine("Short");
         var native = CoreEngine.For(engine).Native;
-        native.Identifiers.Register(Identifier.Create()).Should().BeTrue();
+        native.Containers.Create(Identifier.New()).Should().BeTrue();
 
         CoreEngine.Release(engine).Should().BeTrue();
 
         native.IsDisposed.Should().BeTrue();
-        ((Action)(() => _ = native.Identifiers.Size)).Should().Throw<ObjectDisposedException>();
+        ((Action)(() => native.Containers.Exists(Identifier.New()))).Should().Throw<ObjectDisposedException>();
         CoreEngine.Release(engine).Should().BeFalse();
     }
 

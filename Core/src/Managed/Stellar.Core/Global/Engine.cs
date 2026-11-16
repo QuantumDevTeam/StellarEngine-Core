@@ -63,10 +63,8 @@ public static class Engine
     public static class Registry
     {
         /// <summary>Gets the registry of identifiers.</summary>
-        public static IRegistry<Identifier> Identifiers => Current.Registry.Identifiers;
 
         /// <summary>Gets the registry of labels.</summary>
-        public static IRegistry<Label> Labels => Current.Registry.Labels;
 
         /// <summary>Gets the registry of data containers.</summary>
         public static IRegistry<IDataContainer> DataContainers => Current.Registry.DataContainers;

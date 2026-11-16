@@ -26,8 +26,6 @@ public sealed unsafe class CoreContext
     {
         _handle = handle;
         _owned = owned;
-        Identifiers = new IdentifierRegistry(this);
-        Labels = new LabelRegistry(this);
         Containers = new ContainerRegistry(this);
         Modules = new ModuleRegistry(this);
     }
@@ -55,12 +53,6 @@ public sealed unsafe class CoreContext
 
     /// <summary>Gets whether the context was disposed.</summary>
     public bool IsDisposed => _owned && _handle == 0;
-
-    /// <summary>Gets the registry of identifiers.</summary>
-    public IdentifierRegistry Identifiers { get; }
-
-    /// <summary>Gets the registry of labels.</summary>
-    public LabelRegistry Labels { get; }
 
     /// <summary>Gets the registry of the membership of containers.</summary>
     public ContainerRegistry Containers { get; }

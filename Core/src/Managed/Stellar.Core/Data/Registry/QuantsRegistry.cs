@@ -19,7 +19,7 @@ public sealed class QuantsRegistry<T>
     }
 
     /// <inheritdoc/>
-    protected override IIdentifier IdentifierOf(T obj)
+    protected override Identifier IdentifierOf(T obj)
     {
         return obj.UID;
     }

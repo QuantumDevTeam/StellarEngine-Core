@@ -8,7 +8,7 @@ namespace Stellar.Kernel.Data.Registry;
 /// </summary>
 /// <typeparam name="T">The type of objects stored in the registry. Must implement <see cref="IRegistrableQuantumObject"/>.</typeparam>
 /// <remarks>
-/// <para>The registry maps <see cref="IIdentifier.UID"/> to object instances. It is used for global or scoped access
+/// <para>The registry maps <see cref="Identifier"/> to object instances. It is used for global or scoped access
 /// to engine components such as entities, tasks, resources, and systems.</para>
 /// <para>Implementations must be thread-safe.</para>
 /// </remarks>
@@ -30,7 +30,7 @@ public interface IRegistry<T>
     /// </summary>
     /// <param name="id">The unique identifier of the object.</param>
     /// <returns><c>true</c> if the object exists; otherwise, <c>false</c>.</returns>
-    bool Exists(IIdentifier id);
+    bool Exists(Identifier id);
 
     /// <summary>
     /// Registers an object in the registry.
@@ -44,14 +44,14 @@ public interface IRegistry<T>
     /// </summary>
     /// <param name="id">The identifier of the object.</param>
     /// <returns>The object if found; otherwise, <c>null</c>.</returns>
-    T? Get(IIdentifier id);
+    T? Get(Identifier id);
 
     /// <summary>
     /// Removes and returns a registered object by its identifier.
     /// </summary>
     /// <param name="id">The identifier of the object.</param>
     /// <returns>The removed object, or <c>null</c> if the object was not registered.</returns>
-    T? Pop(IIdentifier id);
+    T? Pop(Identifier id);
 
     /// <summary>
     /// Gets the number of objects currently registered.
@@ -61,7 +61,7 @@ public interface IRegistry<T>
     /// <summary>
     /// Gets a snapshot of the identifiers of all registered objects.
     /// </summary>
-    ICollection<IIdentifier> Keys { get; }
+    ICollection<Identifier> Keys { get; }
 
     /// <summary>
     /// Gets a snapshot of all registered objects.

@@ -56,8 +56,6 @@
         <ClCompile Include="pch.cpp">
             <PrecompiledHeader>Create</PrecompiledHeader>
         </ClCompile>
-        <ClCompile Include="Data\Registry\IdentifierRegistry.cpp"/>
-        <ClCompile Include="Data\Registry\LabelRegistry.cpp"/>
         <ClCompile Include="Data\Registry\ContainerRegistry.cpp"/>
         <ClCompile Include="HeadersCheck.cpp">
             <PrecompiledHeader>NotUsing</PrecompiledHeader>

@@ -1,3 +1,4 @@
+using Stellar.Kernel;
 using Stellar.Core.Native;
 
 namespace Stellar.Core.Data.Registry;
@@ -16,55 +17,55 @@ public sealed unsafe class ContainerRegistry
     }
 
     /// <summary>Creates a container. <returns>False if it exists already.</returns></summary>
-    public bool Create(Guid container)
+    public bool Create(Identifier container)
     {
         int created;
         return Exports.Ask(Exports.stellar_container_create(_context.Handle, &container, &created), created);
     }
 
     /// <summary>Destroys a container. <returns>False if it does not exist.</returns></summary>
-    public bool Destroy(Guid container)
+    public bool Destroy(Identifier container)
     {
         int destroyed;
         return Exports.Ask(Exports.stellar_container_destroy(_context.Handle, &container, &destroyed), destroyed);
     }
 
     /// <summary>Checks for a container.</summary>
-    public bool Exists(Guid container)
+    public bool Exists(Identifier container)
     {
         int exists;
         return Exports.Ask(Exports.stellar_container_exists(_context.Handle, &container, &exists), exists);
     }
 
     /// <summary>Seals a container: it cannot change any more.</summary>
-    public void Seal(Guid container)
+    public void Seal(Identifier container)
     {
         Exports.Check(Exports.stellar_container_seal(_context.Handle, &container));
     }
 
     /// <summary>Checks whether a container is sealed.</summary>
-    public bool IsSealed(Guid container)
+    public bool IsSealed(Identifier container)
     {
         int isSealed;
         return Exports.Ask(Exports.stellar_container_is_sealed(_context.Handle, &container, &isSealed), isSealed);
     }
 
     /// <summary>Adds an item. <returns>False if it is there already.</returns></summary>
-    public bool Add(Guid container, Guid item)
+    public bool Add(Identifier container, Identifier item)
     {
         int added;
         return Exports.Ask(Exports.stellar_container_add(_context.Handle, &container, &item, &added), added);
     }
 
     /// <summary>Removes an item. <returns>False if it is not there.</returns></summary>
-    public bool Remove(Guid container, Guid item)
+    public bool Remove(Identifier container, Identifier item)
     {
         int removed;
         return Exports.Ask(Exports.stellar_container_remove(_context.Handle, &container, &item, &removed), removed);
     }
 
     /// <summary>Checks for an item.</summary>
-    public bool Contains(Guid container, Guid item)
+    public bool Contains(Identifier container, Identifier item)
     {
         int contained;
         return Exports.Ask(Exports.stellar_container_contains(_context.Handle, &container, &item, &contained),
@@ -72,7 +73,7 @@ public sealed unsafe class ContainerRegistry
     }
 
     /// <summary>Gets the number of items.</summary>
-    public int Count(Guid container)
+    public int Count(Identifier container)
     {
         nuint count;
         Exports.Check(Exports.stellar_container_count(_context.Handle, &container, &count));
@@ -80,7 +81,7 @@ public sealed unsafe class ContainerRegistry
     }
 
     /// <summary>Gets the items.</summary>
-    public Guid[] Items(Guid container)
+    public Identifier[] Items(Identifier container)
     {
         var context = _context.Handle;
         return Exports.ReadIdentifiers((buffer, capacity, required) =>
@@ -91,21 +92,21 @@ public sealed unsafe class ContainerRegistry
     }
 
     /// <summary>Removes every item. <returns>False if the container does not exist.</returns></summary>
-    public bool Clear(Guid container)
+    public bool Clear(Identifier container)
     {
         int cleared;
         return Exports.Ask(Exports.stellar_container_clear(_context.Handle, &container, &cleared), cleared);
     }
 
     /// <summary>Adds a branch. <returns>False if it is there already.</returns></summary>
-    public bool AddBranch(Guid container, Guid branch)
+    public bool AddBranch(Identifier container, Identifier branch)
     {
         int added;
         return Exports.Ask(Exports.stellar_container_add_branch(_context.Handle, &container, &branch, &added), added);
     }
 
     /// <summary>Removes a branch. <returns>False if it is not there.</returns></summary>
-    public bool RemoveBranch(Guid container, Guid branch)
+    public bool RemoveBranch(Identifier container, Identifier branch)
     {
         int removed;
         return Exports.Ask(Exports.stellar_container_remove_branch(_context.Handle, &container, &branch, &removed),
@@ -113,7 +114,7 @@ public sealed unsafe class ContainerRegistry
     }
 
     /// <summary>Checks for a branch.</summary>
-    public bool ContainsBranch(Guid container, Guid branch)
+    public bool ContainsBranch(Identifier container, Identifier branch)
     {
         int contained;
         return Exports.Ask(Exports.stellar_container_contains_branch(_context.Handle, &container, &branch, &contained),
@@ -121,7 +122,7 @@ public sealed unsafe class ContainerRegistry
     }
 
     /// <summary>Gets the branches.</summary>
-    public Guid[] Branches(Guid container)
+    public Identifier[] Branches(Identifier container)
     {
         var context = _context.Handle;
         return Exports.ReadIdentifiers((buffer, capacity, required) =>

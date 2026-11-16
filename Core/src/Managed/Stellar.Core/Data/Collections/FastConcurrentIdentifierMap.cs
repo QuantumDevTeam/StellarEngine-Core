@@ -4,7 +4,7 @@ using Stellar.Kernel;
 namespace Stellar.Core.Data.Collections;
 
 /// <summary>
-/// High-performance thread-safe dictionary for <see cref="IIdentifier"/> keys.
+/// High-performance thread-safe dictionary for <see cref="Identifier"/> keys.
 /// Uses snapshot-based iteration to avoid per-frame allocations and supports immediate visibility for "hot" items.
 /// </summary>
 /// <typeparam name="T">The type of stored values.</typeparam>
@@ -28,7 +28,7 @@ namespace Stellar.Core.Data.Collections;
 public sealed class FastConcurrentIdentifierMap<T>
     : IEnumerable<T>
 {
-    private readonly Dictionary<IIdentifier, T> _dict;
+    private readonly Dictionary<Identifier, T> _dict;
     private readonly ReaderWriterLockSlim _lock = new();
 
     // Both arrays are replaced, never mutated: a reader that grabbed one iterates it with no lock.
@@ -39,9 +39,9 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// Creates the map. Initial data is visible in the snapshot right away.
     /// </summary>
     /// <param name="data">The initial data.</param>
-    public FastConcurrentIdentifierMap(IEnumerable<KeyValuePair<IIdentifier, T>>? data = null)
+    public FastConcurrentIdentifierMap(IEnumerable<KeyValuePair<Identifier, T>>? data = null)
     {
-        _dict = new Dictionary<IIdentifier, T>(data ?? [], IdentifierComparer.Instance);
+        _dict = new Dictionary<Identifier, T>(data ?? []);
         _snapshot = _dict.Values.ToArray();
     }
 
@@ -80,7 +80,7 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// </summary>
     /// <param name="key">The key.</param>
     /// <returns>The value, or <c>default</c>.</returns>
-    public T? GetValueOrDefault(IIdentifier key)
+    public T? GetValueOrDefault(Identifier key)
     {
         return TryGetValue(key, out var value) ? value : default;
     }
@@ -91,9 +91,9 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// <param name="key">The key.</param>
     /// <param name="value">The found value, or <c>default</c> if not found.</param>
     /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
-    public bool TryGetValue(IIdentifier key, out T? value)
+    public bool TryGetValue(Identifier key, out T? value)
     {
-        if (key is null)
+        if (key.IsEmpty)
         {
             value = default;
             return false;
@@ -120,9 +120,9 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// If <c>false</c>, it becomes visible only after the next <see cref="RefreshSnapshot"/> call.
     /// </param>
     /// <returns><c>true</c> if the addition succeeded; <c>false</c> if the key already exists.</returns>
-    public bool TryAdd(IIdentifier key, T value, bool immediate = false)
+    public bool TryAdd(Identifier key, T value, bool immediate = false)
     {
-        if (key is null) return false;
+        if (key.IsEmpty) return false;
 
         _lock.EnterWriteLock();
         try
@@ -150,9 +150,9 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// This method rebuilds the snapshot inside the write lock, which may be expensive for bulk removals.
     /// For mass deletions, consider using <see cref="TryRemoveDeferred"/>.
     /// </remarks>
-    public bool TryRemove(IIdentifier key, out T? value)
+    public bool TryRemove(Identifier key, out T? value)
     {
-        if (key is null)
+        if (key.IsEmpty)
         {
             value = default;
             return false;
@@ -182,9 +182,9 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// The element will disappear from iterations only after the next <see cref="RefreshSnapshot"/> call.
     /// Useful for bulk removals to avoid repeated snapshot copies.
     /// </remarks>
-    public bool TryRemoveDeferred(IIdentifier key, out T? value)
+    public bool TryRemoveDeferred(Identifier key, out T? value)
     {
-        if (key is null)
+        if (key.IsEmpty)
         {
             value = default;
             return false;
@@ -204,9 +204,9 @@ public sealed class FastConcurrentIdentifierMap<T>
     /// <summary>
     /// Checks whether the dictionary contains the specified key.
     /// </summary>
-    public bool ContainsKey(IIdentifier key)
+    public bool ContainsKey(Identifier key)
     {
-        if (key is null) return false;
+        if (key.IsEmpty) return false;
 
         _lock.EnterReadLock();
         try

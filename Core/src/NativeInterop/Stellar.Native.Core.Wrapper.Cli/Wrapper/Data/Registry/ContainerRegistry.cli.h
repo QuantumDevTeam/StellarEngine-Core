@@ -32,54 +32,54 @@ namespace Stellar::Core::Data::Registry
     public:
         /// <summary>Creates an empty container.</summary>
         /// <returns><c>false</c> if it exists already.</returns>
-        bool Create(Guid container);
+        bool Create(::Stellar::Kernel::Identifier container);
 
         /// <summary>Destroys a container.</summary>
         /// <returns><c>false</c> if it does not exist.</returns>
-        bool Destroy(Guid container);
+        bool Destroy(::Stellar::Kernel::Identifier container);
 
         /// <summary>Checks whether a container exists.</summary>
-        bool Exists(Guid container);
+        bool Exists(::Stellar::Kernel::Identifier container);
 
         /// <summary>Makes a container read-only, for good.</summary>
-        void Seal(Guid container);
+        void Seal(::Stellar::Kernel::Identifier container);
 
         /// <summary>Checks whether a container is read-only.</summary>
-        bool IsSealed(Guid container);
+        bool IsSealed(::Stellar::Kernel::Identifier container);
 
         /// <summary>Adds an item.</summary>
         /// <returns><c>false</c> if it is there already or the container is sealed.</returns>
-        bool Add(Guid container, Guid item);
+        bool Add(::Stellar::Kernel::Identifier container, ::Stellar::Kernel::Identifier item);
 
         /// <summary>Removes an item.</summary>
         /// <returns><c>false</c> if it is not there or the container is sealed.</returns>
-        bool Remove(Guid container, Guid item);
+        bool Remove(::Stellar::Kernel::Identifier container, ::Stellar::Kernel::Identifier item);
 
         /// <summary>Checks for an item.</summary>
-        bool Contains(Guid container, Guid item);
+        bool Contains(::Stellar::Kernel::Identifier container, ::Stellar::Kernel::Identifier item);
 
         /// <summary>Gets the number of items.</summary>
-        int Count(Guid container);
+        int Count(::Stellar::Kernel::Identifier container);
 
         /// <summary>Gets a snapshot of the items.</summary>
-        array<Guid>^ Items(Guid container);
+        array<::Stellar::Kernel::Identifier>^ Items(::Stellar::Kernel::Identifier container);
 
         /// <summary>Removes every item.</summary>
         /// <returns><c>false</c> if the container is sealed.</returns>
-        bool Clear(Guid container);
+        bool Clear(::Stellar::Kernel::Identifier container);
 
         /// <summary>Nests a container. The branch must exist.</summary>
         /// <returns><c>false</c> if it is nested already or is the container itself.</returns>
-        bool AddBranch(Guid container, Guid branch);
+        bool AddBranch(::Stellar::Kernel::Identifier container, ::Stellar::Kernel::Identifier branch);
 
         /// <summary>Removes a nested container.</summary>
         /// <returns><c>false</c> if it is not nested.</returns>
-        bool RemoveBranch(Guid container, Guid branch);
+        bool RemoveBranch(::Stellar::Kernel::Identifier container, ::Stellar::Kernel::Identifier branch);
 
         /// <summary>Checks for a nested container.</summary>
-        bool ContainsBranch(Guid container, Guid branch);
+        bool ContainsBranch(::Stellar::Kernel::Identifier container, ::Stellar::Kernel::Identifier branch);
 
         /// <summary>Gets a snapshot of the nested containers.</summary>
-        array<Guid>^ Branches(Guid container);
+        array<::Stellar::Kernel::Identifier>^ Branches(::Stellar::Kernel::Identifier container);
     };
 }

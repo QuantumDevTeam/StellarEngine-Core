@@ -20,7 +20,7 @@ public class Roster<T>
     /// Creates a roster with typed data and branches.
     /// </summary>
     public Roster(MetaQuant meta, FastConcurrentIdentifierMap<T> data,
-        IEnumerable<KeyValuePair<IIdentifier, Roster<T>>> branches)
+        IEnumerable<KeyValuePair<Identifier, Roster<T>>> branches)
         : base(meta, data)
     {
         Branches = new ConcurrentIdentifierMap<Roster<T>>();
@@ -32,8 +32,8 @@ public class Roster<T>
     /// <summary>
     /// Creates a roster with data and branches.
     /// </summary>
-    public Roster(MetaQuant metaData, Dictionary<IIdentifier, T> data,
-        IEnumerable<KeyValuePair<IIdentifier, Roster<T>>> branches)
+    public Roster(MetaQuant metaData, Dictionary<Identifier, T> data,
+        IEnumerable<KeyValuePair<Identifier, Roster<T>>> branches)
         : this(metaData, new FastConcurrentIdentifierMap<T>(data), branches)
     {
     }
@@ -41,8 +41,8 @@ public class Roster<T>
     /// <summary>
     /// Creates a roster with data.
     /// </summary>
-    public Roster(MetaQuant metaData, Dictionary<IIdentifier, T> data)
-        : this(metaData, data, new Dictionary<IIdentifier, Roster<T>>())
+    public Roster(MetaQuant metaData, Dictionary<Identifier, T> data)
+        : this(metaData, data, new Dictionary<Identifier, Roster<T>>())
     {
     }
 
@@ -50,7 +50,7 @@ public class Roster<T>
     /// Creates an empty roster.
     /// </summary>
     public Roster(MetaQuant metaData)
-        : this(metaData, new Dictionary<IIdentifier, T>())
+        : this(metaData, new Dictionary<Identifier, T>())
     {
     }
 
@@ -75,7 +75,7 @@ public class Roster<T>
     /// Gets a branch.
     /// </summary>
     /// <exception cref="KeyNotFoundException">Thrown if there is no such branch.</exception>
-    public Roster<T> GetBranch(IIdentifier identifier)
+    public Roster<T> GetBranch(Identifier identifier)
     {
         return Branches.GetValueOrDefault(identifier) ??
                throw new KeyNotFoundException($"{identifier} is not a branch");
@@ -89,7 +89,7 @@ public class Roster<T>
     {
         ArgumentNullException.ThrowIfNull(branch);
 
-        if (!Native.AddBranch(UID.UID, branch.UID.UID))
+        if (!Native.AddBranch(UID, branch.UID))
             return false;
 
         return Branches.TryAdd(branch.UID, branch);
@@ -99,9 +99,9 @@ public class Roster<T>
     /// Removes a branch.
     /// </summary>
     /// <returns>The branch, or <c>null</c> if there is no such branch.</returns>
-    public Roster<T>? PopBranch(IIdentifier identifier)
+    public Roster<T>? PopBranch(Identifier identifier)
     {
-        if (identifier is null || !Native.RemoveBranch(UID.UID, identifier.UID))
+        if (!Native.RemoveBranch(UID, identifier))
             return null;
 
         Branches.TryRemove(identifier, out var branch);
@@ -111,7 +111,7 @@ public class Roster<T>
     /// <summary>
     /// Creates and adds a branch with data.
     /// </summary>
-    public Roster<T> NewBranch(MetaQuant meta, Dictionary<IIdentifier, T> data)
+    public Roster<T> NewBranch(MetaQuant meta, Dictionary<Identifier, T> data)
     {
         var branch = new Roster<T>(meta, data);
         SaveBranch(branch);
@@ -123,15 +123,15 @@ public class Roster<T>
     /// </summary>
     public Roster<T> NewBranch(MetaQuant metaData)
     {
-        return NewBranch(metaData, new Dictionary<IIdentifier, T>());
+        return NewBranch(metaData, new Dictionary<Identifier, T>());
     }
 
     /// <summary>
     /// Checks for a branch.
     /// </summary>
-    public bool ContainsBranch(IIdentifier identifier)
+    public bool ContainsBranch(Identifier identifier)
     {
-        return identifier is not null && Native.ContainsBranch(UID.UID, identifier.UID);
+        return Native.ContainsBranch(UID, identifier);
     }
 
     #endregion

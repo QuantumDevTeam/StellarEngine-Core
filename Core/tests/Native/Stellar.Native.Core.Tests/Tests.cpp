@@ -80,49 +80,6 @@ namespace
         CHECK(Identifier(first.ToAbi()) == first);
     }
 
-    void TestIdentifierRegistry()
-    {
-        CoreContext context;
-        auto& registry = context.Identifiers();
-        const auto id = Identifier::Create();
-
-        CHECK(registry.Register(id));
-        CHECK(!registry.Register(id));
-        CHECK(registry.Contains(id));
-        CHECK(registry.Unregister(id));
-        CHECK(!registry.Unregister(id));
-        CHECK(!registry.Contains(id));
-    }
-
-    void TestLabelRegistry()
-    {
-        CoreContext context;
-        auto& registry = context.Labels();
-        const auto id = Identifier::Create();
-
-        // The registry must keep its own copy: this text dies before the label is read
-        auto text = std::make_unique<std::string>("S.N.C/Test");
-        const auto label = registry.Register(*text, id);
-        CHECK(label.has_value());
-        text.reset();
-
-        CHECK(label->GetName() == "S.N.C/Test");
-        CHECK(registry.Get("S.N.C/Test")->GetUID() == id);
-        CHECK(registry.Get(id)->GetName() == "S.N.C/Test");
-        CHECK(!registry.Register("S.N.C/Test", Identifier::Create()).has_value());
-        CHECK(!registry.Register("S.N.C/Other", id).has_value());
-        CHECK(!registry.Register("", Identifier::Create()).has_value());
-
-        CHECK(registry.Unregister(id));
-        CHECK(!registry.Get("S.N.C/Test").has_value());
-        CHECK(!registry.Contains(id));
-
-        const auto byName = Identifier::Create();
-        CHECK(registry.Register("S.N.C/ByName", byName).has_value());
-        CHECK(registry.Unregister("S.N.C/ByName"));
-        CHECK(!registry.Contains(byName));
-    }
-
     void TestConcurrentMap()
     {
         ConcurrentUnorderedMap<int, int> map;
@@ -407,22 +364,6 @@ namespace
         CHECK(std::memcmp(&uid, &parsed, sizeof(uid)) == 0);
         CHECK(stellar_identifier_parse({"bad", 3}, &parsed, &answer) == STELLAR_RESULT_OK && answer == 0);
 
-        CHECK(stellar_identifier_register(context, &uid, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_identifier_register(context, &uid, &answer) == STELLAR_RESULT_OK && answer == 0);
-        CHECK(stellar_identifier_contains(context, &uid, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_identifier_unregister(context, &uid, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_identifier_unregister(context, &uid, &answer) == STELLAR_RESULT_OK && answer == 0);
-
-        const StellarStringView name = {"S.N.C/Abi", 9};
-        StellarUid found{};
-        CHECK(stellar_label_register(context, name, &uid, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_label_find(context, name, &found, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(std::memcmp(&uid, &found, sizeof(uid)) == 0);
-        CHECK(stellar_label_get_name(context, &uid, &buffer[0], sizeof(buffer), &required) == STELLAR_RESULT_OK);
-        CHECK(std::string(buffer) == "S.N.C/Abi");
-        CHECK(stellar_label_unregister(context, &uid, &answer) == STELLAR_RESULT_OK && answer == 1);
-        CHECK(stellar_label_find(context, name, &found, &answer) == STELLAR_RESULT_OK && answer == 0);
-
         // Containers through the exports, and a failure: an unknown container
         StellarUid container{};
         size_t count = 0;
@@ -458,8 +399,8 @@ namespace
         StellarUid probe{};
         CHECK(stellar_identifier_create(&probe) == STELLAR_RESULT_OK);
         int32_t inDefault = -1;
-        CHECK(stellar_identifier_register(context, &probe, &inDefault) == STELLAR_RESULT_OK && inDefault == 1);
-        CHECK(stellar_identifier_contains(nullptr, &probe, &inDefault) == STELLAR_RESULT_OK && inDefault == 0);
+        CHECK(stellar_container_create(context, &probe, &inDefault) == STELLAR_RESULT_OK && inDefault == 1);
+        CHECK(stellar_container_exists(nullptr, &probe, &inDefault) == STELLAR_RESULT_OK && inDefault == 0);
         CHECK(stellar_core_context_destroy(context) == STELLAR_RESULT_OK);
     }
 
@@ -473,30 +414,20 @@ namespace
         CoreContext editor;
         CoreContext game;
 
-        // Two engines know nothing of each other: the same identifier, the same label name in both
+        // Two engines know nothing of each other: the same container in both
         const auto id = Identifier::Create();
-        CHECK(editor.Identifiers().Register(id));
-        CHECK(game.Identifiers().Register(id));
-        CHECK(game.Identifiers().Unregister(id));
-        CHECK(editor.Identifiers().Contains(id));
-        CHECK(!CoreContext::Default().Identifiers().Contains(id));
-
-        CHECK(editor.Labels().Register("Player", Identifier::Create()).has_value());
-        CHECK(game.Labels().Register("Player", Identifier::Create()).has_value());
-        CHECK(editor.Labels().Get("Player")->GetUID() != game.Labels().Get("Player")->GetUID());
-
         CHECK(editor.Containers().Create(id));
         CHECK(!game.Containers().Exists(id));
 
         CHECK(&CoreContext::Default() == &CoreContext::Default());
-        CHECK(&editor.Identifiers() != &game.Identifiers());
+        CHECK(&editor.Containers() != &game.Containers());
 
         // A context that goes takes its registries with it
         {
             CoreContext temporary;
-            CHECK(temporary.Identifiers().Register(id));
+            CHECK(temporary.Containers().Create(id));
         }
-        CHECK(editor.Identifiers().Contains(id));
+        CHECK(editor.Containers().Exists(id));
     }
 
     void TestModuleContract()
@@ -556,8 +487,6 @@ int main(int, char* argv[])
     const auto directory = std::filesystem::absolute(argv[0]).parent_path();
 
     TestIdentifier();
-    TestIdentifierRegistry();
-    TestLabelRegistry();
     TestConcurrentMap();
     TestPriorityQueue();
     TestConcurrentVector();

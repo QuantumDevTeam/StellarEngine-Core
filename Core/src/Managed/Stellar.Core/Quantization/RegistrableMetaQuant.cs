@@ -13,7 +13,7 @@ public abstract class RegistrableMetaQuant<TMeta>
     where TMeta : RegistrableMetaQuant<TMeta>
 {
     /// <inheritdoc/>
-    protected RegistrableMetaQuant(IIdentifier identifier)
+    protected RegistrableMetaQuant(Identifier identifier)
         : base(identifier)
     {
         _home = Global.CoreEngine.Current.Registry.MetaQuants<TMeta>();

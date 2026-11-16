@@ -19,7 +19,7 @@ public sealed class MetaQuantsRegistry<TMeta>
     }
 
     /// <inheritdoc/>
-    protected override IIdentifier IdentifierOf(TMeta obj)
+    protected override Identifier IdentifierOf(TMeta obj)
     {
         return obj.UID;
     }

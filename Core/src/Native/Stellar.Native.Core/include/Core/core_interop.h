@@ -13,8 +13,6 @@
 #include "Identifier.h"
 #include "Label.h"
 
-#include "Data/Registry/IdentifierRegistry.h"
-#include "Data/Registry/LabelRegistry.h"
 #include "Data/Registry/ContainerRegistry.h"
 
 #include "Failures/NativeException.h"

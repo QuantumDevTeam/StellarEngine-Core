@@ -36,7 +36,7 @@ public abstract class Quant<TMeta>
     public IReadOnlyList<IMetaQuant> Metas => _metas;
 
     /// <inheritdoc/>
-    public IIdentifier UID => Meta.UID;
+    public Identifier UID => Meta.UID;
 
     /// <inheritdoc/>
     public TMeta2? FindMeta<TMeta2>()

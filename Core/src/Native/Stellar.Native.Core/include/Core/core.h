@@ -18,8 +18,6 @@ namespace Stellar::Native::Core
 
     namespace Data::Registry
     {
-        class IdentifierRegistry;
-        class LabelRegistry;
         class ContainerRegistry;
     }
 

@@ -351,7 +351,7 @@ public sealed class MainLoopTests : IDisposable
 
     private sealed class NotAParticipant : IQuant
     {
-        public IIdentifier UID => throw new NotSupportedException();
+        public Identifier UID => throw new NotSupportedException();
 
         public IMetaQuant Meta => throw new NotSupportedException();
 
@@ -370,7 +370,7 @@ public sealed class MainLoopTests : IDisposable
 
         public Action<double>? OnFixed { get; set; }
 
-        public IIdentifier UID => throw new NotSupportedException();
+        public Identifier UID => throw new NotSupportedException();
 
         public IMetaQuant Meta => throw new NotSupportedException();
 

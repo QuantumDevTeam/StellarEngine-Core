@@ -30,7 +30,7 @@ public readonly record struct FailureBinding(FailureType Type, IFailureLevel? Le
 /// </summary>
 /// <param name="handlers">The container of handlers. A new one is created when omitted.</param>
 public class HandlerProviderMeta(DataContainer<IFailureHandler>? handlers = null)
-    : MetaQuant(Identifier.CreateAndRegister())
+    : MetaQuant(Identifier.New())
 {
     /// <summary>
     /// Gets the handlers.
@@ -40,7 +40,7 @@ public class HandlerProviderMeta(DataContainer<IFailureHandler>? handlers = null
     /// <summary>
     /// Gets the binding of each handler.
     /// </summary>
-    public ConcurrentDictionary<IIdentifier, FailureBinding> Bindings { get; } = new(IdentifierComparer.Instance);
+    public ConcurrentDictionary<Identifier, FailureBinding> Bindings { get; } = new();
 }
 
 /// <inheritdoc cref="IFailureHandlerProvider"/>

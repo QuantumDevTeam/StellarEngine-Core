@@ -27,7 +27,7 @@
 #endif
 
 /// @brief Major version of these exports.
-#define STELLAR_PINVOKE_ABI_MAJOR 2u
+#define STELLAR_PINVOKE_ABI_MAJOR 3u
 
 /// @brief Minor version of these exports.
 #define STELLAR_PINVOKE_ABI_MINOR 0u
@@ -53,20 +53,7 @@ STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_core_context_destroy(Ptr<
 STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_create(Ptr<StellarUid> identifier);
 STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_parse(StellarStringView text, Ptr<StellarUid> identifier, Ptr<int32_t> parsed);
 STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_format(Ptr<const StellarUid> identifier, Ptr<char> buffer, size_t capacity, Ptr<size_t> required);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_register(Ptr<StellarCoreContext> context, Ptr<const StellarUid> identifier, Ptr<int32_t> added);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_unregister(Ptr<StellarCoreContext> context, Ptr<const StellarUid> identifier, Ptr<int32_t> removed);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_contains(Ptr<StellarCoreContext> context, Ptr<const StellarUid> identifier, Ptr<int32_t> contained);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_count(Ptr<StellarCoreContext> context, Ptr<size_t> count);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_identifier_snapshot(Ptr<StellarCoreContext> context, Ptr<StellarUid> buffer, size_t capacity, Ptr<size_t> required);
 
-// Labels
-
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_label_register(Ptr<StellarCoreContext> context, StellarStringView name, Ptr<const StellarUid> identifier, Ptr<int32_t> added);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_label_find(Ptr<StellarCoreContext> context, StellarStringView name, Ptr<StellarUid> identifier, Ptr<int32_t> found);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_label_get_name(Ptr<StellarCoreContext> context, Ptr<const StellarUid> identifier, Ptr<char> buffer, size_t capacity, Ptr<size_t> required);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_label_unregister(Ptr<StellarCoreContext> context, Ptr<const StellarUid> identifier, Ptr<int32_t> removed);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_label_contains(Ptr<StellarCoreContext> context, Ptr<const StellarUid> identifier, Ptr<int32_t> contained);
-STELLAR_PINVOKE_API StellarResult STELLAR_CALL stellar_label_count(Ptr<StellarCoreContext> context, Ptr<size_t> count);
 
 // Containers
 

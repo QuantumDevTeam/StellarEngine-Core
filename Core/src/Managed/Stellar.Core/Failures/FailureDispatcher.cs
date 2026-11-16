@@ -1,6 +1,7 @@
 using Stellar.Core.Data.Collections;
 using Stellar.Core.Failures.Handlers;
 using Stellar.Core.Quantization;
+using Stellar.Kernel;
 using Stellar.Kernel.Failures;
 using Stellar.Kernel.Failures.Handlers;
 using Stellar.Kernel.Quantization;
@@ -30,7 +31,7 @@ public interface IFailureDispatcherMeta
 public class FailureDispatcherMeta(
     DataContainer<IFailureLevel>? failureLevels = null,
     IFailureHandlerProvider? failureHandlerProvider = null
-) : MetaQuant(Identifier.CreateAndRegister()), IFailureDispatcherMeta
+) : MetaQuant(Identifier.New()), IFailureDispatcherMeta
 {
     /// <inheritdoc/>
     public DataContainer<IFailureLevel> FailureLevels { get; } =

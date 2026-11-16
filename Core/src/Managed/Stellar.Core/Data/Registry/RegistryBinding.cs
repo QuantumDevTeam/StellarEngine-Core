@@ -20,7 +20,7 @@ internal static class RegistryBinding
         Cast<T>(registry).Register(item);
     }
 
-    public static void Unregister<T>(IQuantumObject registry, IIdentifier id)
+    public static void Unregister<T>(IQuantumObject registry, Identifier id)
         where T : IRegistrableQuantumObject
     {
         Cast<T>(registry).Pop(id);

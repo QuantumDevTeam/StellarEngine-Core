@@ -8,8 +8,6 @@
 
 namespace Stellar::Core::Data::Registry
 {
-    ref class IdentifierRegistry;
-    ref class LabelRegistry;
     ref class ContainerRegistry;
 }
 
@@ -40,8 +38,6 @@ namespace Stellar::Core::Native
 
         nc::CoreContext* _native;
         bool _owned;
-        Data::Registry::IdentifierRegistry^ _identifiers;
-        Data::Registry::LabelRegistry^ _labels;
         Data::Registry::ContainerRegistry^ _containers;
         ::Stellar::Core::Modules::ModuleRegistry^ _modules;
 
@@ -75,10 +71,8 @@ namespace Stellar::Core::Native
         property bool IsDisposed { bool get() { return _native == nullptr; } }
 
         /// <summary>Gets the registry of identifiers.</summary>
-        property Data::Registry::IdentifierRegistry^ Identifiers { Data::Registry::IdentifierRegistry^ get(); }
 
         /// <summary>Gets the registry of labels.</summary>
-        property Data::Registry::LabelRegistry^ Labels { Data::Registry::LabelRegistry^ get(); }
 
         /// <summary>Gets the registry of the membership of containers.</summary>
         property Data::Registry::ContainerRegistry^ Containers { Data::Registry::ContainerRegistry^ get(); }
