@@ -27,7 +27,7 @@ public static class Engine
     /// <summary>
     /// Gets the services published by the modules.
     /// </summary>
-    public static IServiceRegistry Services => Current.Services;
+    public static IServiceCatalog Services => Current.Services;
 
     /// <summary>
     /// Gets the failure dispatcher, or <c>null</c> if the Core module has not started yet.

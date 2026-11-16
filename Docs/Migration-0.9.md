@@ -56,6 +56,21 @@ Objects no longer register themselves: registries do, and tell them.
 
 `RegistersImplicitly` turns the implicit registration off for a class.
 
+## Catalogs
+
+What is found by a key of its own, not by an identifier, is a catalog: `ICatalog<TKey, TValue>` (`Set`, `TryAdd`,
+`TryGet`, `Get`, `Contains`, `Remove`), and `IReadOnlyCatalog<TKey, TValue>` for what can only be read.
+`Stellar.Core.Data.Catalog.Catalog<TKey, TValue>` implements it, with hooks for the form of keys, the values it
+refuses and what a missing key throws. A registry is only what holds objects by their identifiers.
+
+| Before | Now |
+|---|---|
+| `IServiceRegistry`, `ServiceRegistry` | `IServiceCatalog`, `ServiceCatalog`: a catalog of `Type` to `object`, refusing a service that does not fulfil its contract |
+| `services.Set<T>()`, `Find<T>()`, `Get<T>()`, `Remove<T>()` | the same, extensions in `Stellar.Kernel.Services` (`using Stellar.Kernel.Services;`) |
+| `IContentTypeRegistry.Register(extension, type)` | `IContentTypeCatalog.Set(extension, type)` |
+| `IFileSystem.RegisterDriver(driver)`, `TryGetDriver(scheme, out driver)` | `fileSystem.AddDriver(driver)`, `fileSystem.Drivers.TryGet(scheme, out driver)` |
+| `IFileSystem.GetDomain(name)`, `TryGetDomain(name, out domain)`, `Domains` as a collection | `fileSystem.Domains.Get(name)`, `TryGet(name, out domain)`: a read-only catalog |
+
 ## Code outside any engine
 
 `EngineScope.Resolve()` is what Stellar.Core and the wrappers use to find the current engine. Outside any engine it

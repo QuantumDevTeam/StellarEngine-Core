@@ -30,7 +30,7 @@ public sealed class EntryPoint(RuntimeConfiguration runtimeConfiguration)
     public CoreEngine Core => _engine ??= CoreEngine.Current;
 
     /// <inheritdoc/>
-    public IServiceRegistry Services => Core.Services;
+    public IServiceCatalog Services => Core.Services;
 
     /// <inheritdoc/>
     public override int Run<TContext>(ref readonly TContext context)

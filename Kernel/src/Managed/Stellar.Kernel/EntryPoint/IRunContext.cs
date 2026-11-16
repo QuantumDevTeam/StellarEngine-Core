@@ -29,7 +29,7 @@ public interface IRunContext
     /// <summary>
     /// Gets the services of the engine, or <c>null</c> if the engine has none yet.
     /// </summary>
-    IServiceRegistry? Services { get; }
+    IServiceCatalog? Services { get; }
 
     /// <summary>
     /// Gets the engine the module runs in: its control, its clocks, its loops. <c>null</c> outside an engine (tests).

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Stellar.Kernel.Configuration;
 using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.Failures;
@@ -14,7 +15,7 @@ namespace Stellar.Runtime.Tests.Host;
 public sealed class HostEntryPoint(RuntimeConfiguration configuration)
     : StellarEntryPoint("Tests/Host", configuration), IServiceHost
 {
-    public IServiceRegistry Services { get; } = new Registry();
+    public IServiceCatalog Services { get; } = new Registry();
 
     public override int Run<TContext>(ref readonly TContext context)
     {
@@ -43,38 +44,32 @@ public sealed class HostEntryPoint(RuntimeConfiguration configuration)
         }
     }
 
-    private sealed class Registry : IServiceRegistry
+    // The Kernel only: a catalog of its own, as Stellar.Core would have
+    private sealed class Registry : IServiceCatalog
     {
         private readonly Dictionary<Type, object> _services = new();
 
-        public void Set<TService>(TService service) where TService : class
-        {
-            lock (_services)
-            {
-                _services[typeof(TService)] = service;
-            }
-        }
+        public int Count { get { lock (_services) return _services.Count; } }
 
-        public TService? Find<TService>() where TService : class
-        {
-            lock (_services)
-            {
-                return _services.GetValueOrDefault(typeof(TService)) as TService;
-            }
-        }
+        public IReadOnlyCollection<Type> Keys { get { lock (_services) return _services.Keys.ToArray(); } }
 
-        public TService Get<TService>() where TService : class
-        {
-            return Find<TService>() ?? throw new InvalidOperationException(typeof(TService).Name);
-        }
+        public IReadOnlyCollection<object> Values { get { lock (_services) return _services.Values.ToArray(); } }
 
-        public bool Remove<TService>() where TService : class
-        {
-            lock (_services)
-            {
-                return _services.Remove(typeof(TService));
-            }
-        }
+        public bool Contains(Type key) { lock (_services) return _services.ContainsKey(key); }
+
+        public bool TryGet(Type key, [MaybeNullWhen(false)] out object value) { lock (_services) return _services.TryGetValue(key, out value); }
+
+        public object Get(Type key) => TryGet(key, out var value) ? value : throw new InvalidOperationException(key.Name);
+
+        public void Set(Type key, object value) { lock (_services) _services[key] = value; }
+
+        public bool TryAdd(Type key, object value) { lock (_services) return _services.TryAdd(key, value); }
+
+        public bool Remove(Type key) { lock (_services) return _services.Remove(key); }
+
+        public IEnumerator<KeyValuePair<Type, object>> GetEnumerator() { lock (_services) return _services.ToList().GetEnumerator(); }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
 

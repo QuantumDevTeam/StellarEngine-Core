@@ -2,6 +2,7 @@ using System.Runtime.Loader;
 using Stellar.Kernel.Configuration;
 using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.Lifecycle;
+using Stellar.Kernel.Services;
 using Stellar.Kernel.Threading;
 using Stellar.Runtime.Tests.Host;
 

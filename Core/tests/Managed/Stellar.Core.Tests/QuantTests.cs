@@ -6,6 +6,7 @@ using Stellar.Core.Services;
 using Stellar.Kernel;
 using Stellar.Kernel.Data.Context;
 using Stellar.Kernel.Quantization;
+using Stellar.Kernel.Services;
 
 namespace Stellar.Core.Tests;
 
@@ -152,7 +153,7 @@ public class ContextTests
     }
 }
 
-public class ServiceRegistryTests
+public class ServiceCatalogTests
 {
     private interface IService;
 
@@ -161,7 +162,7 @@ public class ServiceRegistryTests
     [Fact]
     public void Services_ArePublishedByContract()
     {
-        var registry = new ServiceRegistry();
+        IServiceCatalog registry = new ServiceCatalog();
         var service = new Service();
 
         registry.Find<IService>().Should().BeNull();
@@ -175,7 +176,7 @@ public class ServiceRegistryTests
     [Fact]
     public void Get_FailsForUnpublishedService()
     {
-        var action = () => new ServiceRegistry().Get<IService>();
+        var action = () => ((IServiceCatalog)new ServiceCatalog()).Get<IService>();
 
         action.Should().Throw<InvalidOperationException>().WithMessage("*IService*");
     }
@@ -183,7 +184,7 @@ public class ServiceRegistryTests
     [Fact]
     public void Remove_UnpublishesService()
     {
-        var registry = new ServiceRegistry();
+        IServiceCatalog registry = new ServiceCatalog();
         registry.Set<IService>(new Service());
 
         registry.Remove<IService>().Should().BeTrue();

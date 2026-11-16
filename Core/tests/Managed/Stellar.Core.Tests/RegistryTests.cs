@@ -178,5 +178,5 @@ internal sealed class ScopeEngine(string name)
 
     public Kernel.Threading.IMainThreadDispatcher Dispatcher => throw new NotSupportedException();
 
-    public Kernel.Services.IServiceRegistry? Services => CoreEngine.For(this).Services;
+    public Kernel.Services.IServiceCatalog? Services => CoreEngine.For(this).Services;
 }

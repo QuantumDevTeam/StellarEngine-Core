@@ -108,6 +108,9 @@ Each engine has one registry per type, made the first time it is asked for: `Cor
   type of its hierarchy marked `[StellarRegistry]`. `protected override bool RegistersImplicitly => false` turns it
   off for a class, which then registers its objects itself.
 
+What is found by a key of its own (services by their contract, content types by extension, drivers by scheme) is a
+catalog, `ICatalog<TKey, TValue>`, not a registry. The services of an engine are its `IServiceCatalog`.
+
 The runtime publishes its part in the services before Stellar.Core starts: `IEngineInstance`, `IEngineControl`,
 `IMainThreadDispatcher`, `ITimeSystem`, `IMainLoops` and `IMainLoop` (the primary loop).
 

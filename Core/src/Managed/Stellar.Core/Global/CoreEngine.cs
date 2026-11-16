@@ -67,7 +67,7 @@ public sealed class CoreEngine
     /// <summary>
     /// Gets the services published by the modules of this engine.
     /// </summary>
-    public IServiceRegistry Services { get; } = new ServiceRegistry();
+    public IServiceCatalog Services { get; } = new ServiceCatalog();
 
     /// <summary>
     /// Gets the failure dispatcher, or <c>null</c> if the Core module has not started yet.

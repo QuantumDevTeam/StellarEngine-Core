@@ -8,7 +8,7 @@ namespace Stellar.Kernel.Lifecycle;
 /// Lets lower levels ask the runtime to stop, without knowing the runtime.
 /// </summary>
 /// <remarks>
-/// Implemented by Stellar.RuntimeSystem and published through the service registry. Stellar.Core cannot reference
+/// Implemented by Stellar.RuntimeSystem and published through the service catalog. Stellar.Core cannot reference
 /// the runtime, so this contract is how a critical failure reaches it.
 /// </remarks>
 public interface IEngineControl

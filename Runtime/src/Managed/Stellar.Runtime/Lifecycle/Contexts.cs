@@ -19,7 +19,7 @@ public readonly ref struct RuntimeRunContext(
     IQuantumObject? sender,
     ILogger? logger,
     IFailureDispatcher? failureDispatcher,
-    IServiceRegistry? services,
+    IServiceCatalog? services,
     IEngineInstance? engine
 ) : IRunContext
 {
@@ -33,7 +33,7 @@ public readonly ref struct RuntimeRunContext(
     public IFailureDispatcher? FailureDispatcher { get; } = failureDispatcher;
 
     /// <inheritdoc/>
-    public IServiceRegistry? Services { get; } = services;
+    public IServiceCatalog? Services { get; } = services;
 
     /// <inheritdoc/>
     public IEngineInstance? Engine { get; } = engine;

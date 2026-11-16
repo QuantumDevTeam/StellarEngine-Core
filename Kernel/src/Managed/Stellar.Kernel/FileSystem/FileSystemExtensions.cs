@@ -22,19 +22,32 @@ public static class FileSystemExtensions
     public static IDomain GetDomain(this IFileSystem fileSystem, FilePath path)
     {
         if (path.IsEmpty) throw new ArgumentException("The empty path names no domain", nameof(path));
-        return fileSystem.GetDomain(path.Domain);
+        return fileSystem.Domains.Get(path.Domain);
+    }
+
+    /// <summary>
+    /// Adds a driver under its scheme.
+    /// </summary>
+    /// <param name="fileSystem">The file system.</param>
+    /// <param name="driver">The driver.</param>
+    /// <exception cref="InvalidOperationException">Thrown if another driver has the same scheme.</exception>
+    public static void AddDriver(this IFileSystem fileSystem, IFileDriver driver)
+    {
+        if (driver is null) throw new ArgumentNullException(nameof(driver));
+        if (!fileSystem.Drivers.TryAdd(driver.Scheme, driver))
+            throw new InvalidOperationException($"A driver of the scheme '{driver.Scheme}' is there already");
     }
 
     /// <inheritdoc cref="IDomain.Exists"/>
     public static bool Exists(this IFileSystem fileSystem, FilePath path) =>
-        !path.IsEmpty && fileSystem.TryGetDomain(path.Domain, out var domain) && domain.Exists(path.Value);
+        !path.IsEmpty && fileSystem.Domains.TryGet(path.Domain, out var domain) && domain.Exists(path.Value);
 
     /// <inheritdoc cref="IDomain.TryGetEntry"/>
     public static bool TryGetEntry(this IFileSystem fileSystem, FilePath path, out FileEntry entry)
     {
         entry = default;
         return !path.IsEmpty
-               && fileSystem.TryGetDomain(path.Domain, out var domain)
+               && fileSystem.Domains.TryGet(path.Domain, out var domain)
                && domain.TryGetEntry(path.Value, out entry);
     }
 
@@ -82,7 +95,7 @@ public static class FileSystemExtensions
     {
         data = default;
         return !path.IsEmpty
-               && fileSystem.TryGetDomain(path.Domain, out var domain)
+               && fileSystem.Domains.TryGet(path.Domain, out var domain)
                && domain.TryGetMemory(path.Value, out data);
     }
 

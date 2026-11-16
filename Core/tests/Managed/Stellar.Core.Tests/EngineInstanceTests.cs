@@ -155,6 +155,6 @@ public class EngineInstanceTests
 
         public IMainThreadDispatcher Dispatcher => throw new NotSupportedException();
 
-        public IServiceRegistry? Services => CoreEngine.For(this).Services;
+        public IServiceCatalog? Services => CoreEngine.For(this).Services;
     }
 }

@@ -115,7 +115,7 @@ public sealed class RuntimeContext
     /// <summary>
     /// Gets or sets the services of the engine, once the module that owns them is started.
     /// </summary>
-    public IServiceRegistry? Services { get; set; }
+    public IServiceCatalog? Services { get; set; }
 
     /// <summary>
     /// Gets or sets the clocks of the engine.
