@@ -21,26 +21,6 @@ public sealed class Failure
     private int _state;
     private FailureReaction _reaction;
 
-    /// <summary>
-    /// Makes a failure.
-    /// </summary>
-    /// <param name="kind">Where it comes from.</param>
-    /// <param name="level">How serious it is.</param>
-    /// <param name="message">What went wrong.</param>
-    /// <param name="exception">The exception behind it, if any.</param>
-    /// <param name="sender">The object it happened in, if known.</param>
-    /// <param name="phase">The phase of the frame it happened in, if any.</param>
-    public Failure(FailureKind kind, FailureLevel level, string message, Exception? exception = null,
-        IQuantumObject? sender = null, FramePhase? phase = null)
-    {
-        Kind = kind;
-        Level = level;
-        Message = string.IsNullOrEmpty(message) ? exception?.Message ?? "A failure" : message;
-        Exception = exception;
-        Sender = sender;
-        Phase = phase;
-    }
-
     /// <summary>Gets the identifier of the failure.</summary>
     public Identifier UID { get; } = Identifier.New();
 
@@ -70,6 +50,26 @@ public sealed class Failure
 
     /// <summary>Gets what was done about it; <c>null</c> until it is reported.</summary>
     public FailureReaction? Reaction => IsReported ? _reaction : null;
+
+    /// <summary>
+    /// Makes a failure.
+    /// </summary>
+    /// <param name="kind">Where it comes from.</param>
+    /// <param name="level">How serious it is.</param>
+    /// <param name="message">What went wrong.</param>
+    /// <param name="exception">The exception behind it, if any.</param>
+    /// <param name="sender">The object it happened in, if known.</param>
+    /// <param name="phase">The phase of the frame it happened in, if any.</param>
+    public Failure(FailureKind kind, FailureLevel level, string message, Exception? exception = null,
+        IQuantumObject? sender = null, FramePhase? phase = null)
+    {
+        Kind = kind;
+        Level = level;
+        Message = string.IsNullOrEmpty(message) ? exception?.Message ?? "A failure" : message;
+        Exception = exception;
+        Sender = sender;
+        Phase = phase;
+    }
 
     /// <summary>
     /// Makes the failure of an exception: the failure of an exception of the engine, a new one for any other.
@@ -116,44 +116,4 @@ public sealed class Failure
     {
         return $"{Level} ({Kind}): {Message}";
     }
-}
-
-/// <summary>
-/// An exception of the engine: it carries its <see cref="Failure"/>.
-/// </summary>
-/// <remarks>
-/// Errors of the engine derive from it and say where they come from and how serious they are. A catcher throws it
-/// on when the reaction to a failure stops the work: a foreign exception travels inside, as
-/// <see cref="Exception.InnerException"/>.
-/// </remarks>
-public class FailureException
-    : Exception
-{
-    /// <summary>
-    /// Makes an exception of the engine, with a new failure.
-    /// </summary>
-    /// <param name="kind">Where it comes from.</param>
-    /// <param name="level">How serious it is.</param>
-    /// <param name="message">What went wrong.</param>
-    /// <param name="innerException">The exception behind it, if any.</param>
-    public FailureException(FailureKind kind, FailureLevel level, string message, Exception? innerException = null)
-        : base(message, innerException)
-    {
-        Failure = new Failure(kind, level, message, this);
-    }
-
-    /// <summary>
-    /// Makes the exception of a failure, to throw it on.
-    /// </summary>
-    /// <param name="failure">The failure.</param>
-    public FailureException(Failure failure)
-        : base((failure ?? throw new ArgumentNullException(nameof(failure))).Message, failure.Exception)
-    {
-        Failure = failure;
-    }
-
-    /// <summary>
-    /// Gets the failure.
-    /// </summary>
-    public Failure Failure { get; }
 }

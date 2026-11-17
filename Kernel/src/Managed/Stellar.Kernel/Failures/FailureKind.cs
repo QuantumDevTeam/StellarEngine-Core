@@ -17,6 +17,11 @@ public readonly struct FailureKind
     private readonly string? _name;
 
     /// <summary>
+    /// Gets the name of the kind; <c>unknown</c> for <see cref="Unknown"/>.
+    /// </summary>
+    public string Name => _name ?? "unknown";
+
+    /// <summary>
     /// Makes a kind.
     /// </summary>
     /// <param name="name">The name of the kind.</param>
@@ -31,11 +36,15 @@ public readonly struct FailureKind
             var c = name[i];
             if (c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9') continue;
             if (i > 0 && c is '.' or '_' or '-') continue;
-            throw new ArgumentException($"'{name}' is not a valid name: a letter or a digit, then letters, digits, '.', '_' or '-'", nameof(name));
+            throw new ArgumentException(
+                $"'{name}' is not a valid name: a letter or a digit, then letters, digits, '.', '_' or '-'",
+                nameof(name));
         }
 
         _name = name.ToLowerInvariant();
     }
+
+    #region Defaults
 
     /// <summary>Nobody said where it comes from.</summary>
     public static FailureKind Unknown => default;
@@ -55,22 +64,12 @@ public readonly struct FailureKind
     /// <summary>The file system and the resources.</summary>
     public static FailureKind FileSystem { get; } = new("filesystem");
 
-    /// <summary>Logging.</summary>
-    public static FailureKind Logging { get; } = new("logging");
-
-    /// <summary>Time and clocks.</summary>
-    public static FailureKind Time { get; } = new("time");
-
-    /// <summary>Jobs.</summary>
-    public static FailureKind Jobs { get; } = new("jobs");
-
     /// <summary>The application: the game itself.</summary>
     public static FailureKind Application { get; } = new("application");
 
-    /// <summary>
-    /// Gets the name of the kind; <c>unknown</c> for <see cref="Unknown"/>.
-    /// </summary>
-    public string Name => _name ?? "unknown";
+    #endregion
+
+    #region Utility functions
 
     /// <inheritdoc/>
     public bool Equals(FailureKind other)
@@ -96,6 +95,10 @@ public readonly struct FailureKind
         return Name;
     }
 
+    #endregion
+
+    #region Operators
+
     /// <summary>Compares two kinds by name.</summary>
     public static bool operator ==(FailureKind left, FailureKind right)
     {
@@ -107,4 +110,6 @@ public readonly struct FailureKind
     {
         return !left.Equals(right);
     }
+
+    #endregion
 }

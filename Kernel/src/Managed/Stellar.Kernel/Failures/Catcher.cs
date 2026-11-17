@@ -45,6 +45,8 @@ namespace Stellar.Kernel.Failures;
 public sealed class Catcher
     : IDisposable
 {
+    private sealed record Rule(Type Type, Action<Exception>? Handler, FailureLevel? Level);
+
     private readonly IFailureSystem? _system;
     private readonly Func<Failure, FailureReaction>? _report;
     private readonly int _keeps = int.MaxValue;
@@ -54,6 +56,15 @@ public sealed class Catcher
     private Failure[] _failures = [];
     private int _failureCount;
     private volatile bool _disposed;
+
+    /// <summary>Gets the kind of its failures.</summary>
+    public FailureKind Kind { get; }
+
+    /// <summary>Gets the level of its failures.</summary>
+    public FailureLevel Level { get; }
+
+    /// <summary>Gets the object its failures happen in, if any.</summary>
+    public IQuantumObject? Sender { get; }
 
     /// <summary>
     /// Makes a catcher that reports to the failure system of the current engine, or stands alone outside any engine.
@@ -75,8 +86,8 @@ public sealed class Catcher
     /// <param name="kind">The kind of its failures.</param>
     /// <param name="level">The level of its failures.</param>
     /// <param name="sender">The object its failures happen in, if any.</param>
-    public Catcher(IFailureSystem system, FailureKind kind = default, FailureLevel level = FailureLevel.Error,
-        IQuantumObject? sender = null)
+    public Catcher(IFailureSystem system,
+        FailureKind kind = default, FailureLevel level = FailureLevel.Error, IQuantumObject? sender = null)
         : this(kind, level, sender)
     {
         _system = system ?? throw new ArgumentNullException(nameof(system));
@@ -89,21 +100,12 @@ public sealed class Catcher
     /// <param name="kind">The kind of its failures.</param>
     /// <param name="level">The level of its failures.</param>
     /// <param name="sender">The object its failures happen in, if any.</param>
-    public Catcher(Func<Failure, FailureReaction> report, FailureKind kind = default, FailureLevel level = FailureLevel.Error,
-        IQuantumObject? sender = null)
+    public Catcher(Func<Failure, FailureReaction> report,
+        FailureKind kind = default, FailureLevel level = FailureLevel.Error, IQuantumObject? sender = null)
         : this(kind, level, sender)
     {
         _report = report ?? throw new ArgumentNullException(nameof(report));
     }
-
-    /// <summary>Gets the kind of its failures.</summary>
-    public FailureKind Kind { get; }
-
-    /// <summary>Gets the level of its failures.</summary>
-    public FailureLevel Level { get; }
-
-    /// <summary>Gets the object its failures happen in, if any.</summary>
-    public IQuantumObject? Sender { get; }
 
     /// <summary>
     /// Gets or sets how many of the last failures <see cref="Failures"/> keeps: all of them by default. A catcher that
@@ -113,7 +115,9 @@ public sealed class Catcher
     public int Keeps
     {
         get => _keeps;
-        init => _keeps = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(value), "A catcher keeps 0 failures or more");
+        init => _keeps = value >= 0
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(value), "A catcher keeps 0 failures or more");
     }
 
     /// <summary>Gets the failures it caught and keeps, in order.</summary>
@@ -135,7 +139,8 @@ public sealed class Catcher
     public Catcher Catch<TException>(Action<TException> handler)
         where TException : Exception
     {
-        if (handler is null) throw new ArgumentNullException(nameof(handler));
+        if (handler is null)
+            throw new ArgumentNullException(nameof(handler));
         AddRule(new Rule(typeof(TException), exception => handler((TException)exception), null));
         return this;
     }
@@ -153,6 +158,91 @@ public sealed class Catcher
         return this;
     }
 
+
+    private void AddRule(Rule rule)
+    {
+        ThrowIfDisposed();
+        while (true)
+        {
+            var current = Volatile.Read(ref _rules);
+            if (Interlocked.CompareExchange(ref _rules, [.. current, rule], current) == current) return;
+        }
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(Catcher));
+    }
+
+    private static void ThrowIfStops(Failure? failure, Exception exception)
+    {
+        if (failure?.Reaction is not { } reaction || !reaction.Stops()) return;
+
+        // The exception of the engine as it was thrown; any other inside a failure of the engine
+        if (exception is FailureException) ExceptionDispatchInfo.Capture(exception).Throw();
+        throw new FailureException(failure);
+    }
+
+    private Failure? Handle(Exception exception, string? operation, FailureLevel? level, FailureKind? kind,
+        IQuantumObject? sender, FramePhase? phase)
+    {
+        foreach (var rule in Volatile.Read(ref _rules))
+        {
+            if (!rule.Type.IsInstanceOfType(exception)) continue;
+            if (rule.Handler is { } handler)
+            {
+                handler(exception);
+                return null;
+            }
+
+            level ??= rule.Level;
+            break;
+        }
+
+        var failure = Failure.From(exception, kind ?? Kind, level ?? Level, sender ?? Sender, operation, phase);
+        Record(failure);
+        return failure;
+    }
+
+    // The last ones only, once there are as many as it keeps
+    private void Keep(Failure failure)
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _failures);
+            Failure[] next;
+            if (current.Length < _keeps)
+            {
+                next = [.. current, failure];
+            }
+            else
+            {
+                next = new Failure[_keeps];
+                Array.Copy(current, current.Length - _keeps + 1, next, 0, _keeps - 1);
+                next[_keeps - 1] = failure;
+            }
+
+            if (Interlocked.CompareExchange(ref _failures, next, current) == current) return;
+        }
+    }
+
+    // Each failure is reported once: one caught again by an outer catcher keeps its first reaction
+    private void Record(Failure failure)
+    {
+        Interlocked.Increment(ref _failureCount);
+        if (_keeps > 0) Keep(failure);
+        if (failure.IsReported) return;
+
+        FailureReaction reaction;
+        if (_report is not null) reaction = _report(failure);
+        else if ((_system ?? EngineScope.Current?.Services?.Find<IFailureSystem>()) is { } system)
+            reaction = system.Report(failure);
+        else reaction = FailureReactions.Default(failure.Level);
+
+        failure.MarkReported(reaction);
+    }
+
     /// <summary>
     /// Runs a suspicious call.
     /// </summary>
@@ -162,7 +252,8 @@ public sealed class Catcher
     /// <exception cref="FailureException">Thrown on if the reaction to the failure stops the work.</exception>
     public bool Run(Action action, string? operation = null)
     {
-        if (action is null) throw new ArgumentNullException(nameof(action));
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
         ThrowIfDisposed();
 
         try
@@ -188,7 +279,8 @@ public sealed class Catcher
     /// <exception cref="FailureException">Thrown on if the reaction to the failure stops the work.</exception>
     public bool Try<T>(Func<T> function, out T value, string? operation = null)
     {
-        if (function is null) throw new ArgumentNullException(nameof(function));
+        if (function is null)
+            throw new ArgumentNullException(nameof(function));
         ThrowIfDisposed();
 
         try
@@ -227,7 +319,8 @@ public sealed class Catcher
     /// <exception cref="FailureException">Thrown on if the reaction to the failure stops the work.</exception>
     public async ValueTask<bool> RunAsync(Func<ValueTask> action, string? operation = null)
     {
-        if (action is null) throw new ArgumentNullException(nameof(action));
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
         ThrowIfDisposed();
 
         try
@@ -253,7 +346,8 @@ public sealed class Catcher
     /// <exception cref="FailureException">Thrown on if the reaction to the failure stops the work.</exception>
     public async ValueTask<T> TryAsync<T>(Func<ValueTask<T>> function, T fallback, string? operation = null)
     {
-        if (function is null) throw new ArgumentNullException(nameof(function));
+        if (function is null)
+            throw new ArgumentNullException(nameof(function));
         ThrowIfDisposed();
 
         try
@@ -276,10 +370,12 @@ public sealed class Catcher
     /// <param name="sender">The object a failure happens in, instead of the one of the catcher.</param>
     /// <param name="phase">The phase of the frame, if any.</param>
     /// <returns>The reported failure, with its reaction; <c>null</c> if the call succeeded or a catch block handled it.</returns>
-    public Failure? Guard(Action action, string? operation = null, FailureKind? kind = null, IQuantumObject? sender = null,
-        FramePhase? phase = null)
+    public Failure? Guard(Action action, string? operation = null,
+        FailureKind? kind = null,
+        IQuantumObject? sender = null, FramePhase? phase = null)
     {
-        if (action is null) throw new ArgumentNullException(nameof(action));
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
 
         try
         {
@@ -300,10 +396,11 @@ public sealed class Catcher
     /// <param name="kind">The kind of a failure, instead of the one of the catcher.</param>
     /// <param name="sender">The object a failure happens in, instead of the one of the catcher.</param>
     /// <returns>The reported failure, with its reaction; <c>null</c> if the call succeeded or a catch block handled it.</returns>
-    public async ValueTask<Failure?> GuardAsync(Func<ValueTask> action, string? operation = null, FailureKind? kind = null,
+    public async ValueTask<Failure?> GuardAsync(Func<ValueTask> action, string? operation = null,
+        FailureKind? kind = null,
         IQuantumObject? sender = null)
     {
-        if (action is null) throw new ArgumentNullException(nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
 
         try
         {
@@ -326,12 +423,13 @@ public sealed class Catcher
     /// <param name="sender">The object it happened in, instead of the one of the catcher.</param>
     /// <param name="phase">The phase of the frame, if any.</param>
     /// <returns>The reported failure, with its reaction; <c>null</c> if a catch block handled it.</returns>
-    public Failure? Report(Exception exception, string? operation = null, FailureLevel? level = null, FailureKind? kind = null,
-        IQuantumObject? sender = null, FramePhase? phase = null)
-    {
-        if (exception is null) throw new ArgumentNullException(nameof(exception));
-        return Handle(exception, operation, level, kind, sender, phase);
-    }
+    public Failure? Report(Exception exception, string? operation = null, FailureLevel? level = null,
+        FailureKind? kind = null,
+        IQuantumObject? sender = null, FramePhase? phase = null) =>
+        exception is null
+            ? throw new ArgumentNullException(nameof(exception))
+            : Handle(exception, operation, level, kind, sender, phase);
+
 
     /// <summary>
     /// Reports a failure that is no exception: a missing asset that has a placeholder, for instance. Never throws.
@@ -367,88 +465,4 @@ public sealed class Catcher
     {
         _disposed = true;
     }
-
-    private Failure? Handle(Exception exception, string? operation, FailureLevel? level, FailureKind? kind,
-        IQuantumObject? sender, FramePhase? phase)
-    {
-        foreach (var rule in Volatile.Read(ref _rules))
-        {
-            if (!rule.Type.IsInstanceOfType(exception)) continue;
-            if (rule.Handler is { } handler)
-            {
-                handler(exception);
-                return null;
-            }
-
-            level ??= rule.Level;
-            break;
-        }
-
-        var failure = Failure.From(exception, kind ?? Kind, level ?? Level, sender ?? Sender, operation, phase);
-        Record(failure);
-        return failure;
-    }
-
-    // Each failure is reported once: one caught again by an outer catcher keeps its first reaction
-    private void Record(Failure failure)
-    {
-        Interlocked.Increment(ref _failureCount);
-        if (_keeps > 0) Keep(failure);
-        if (failure.IsReported) return;
-
-        FailureReaction reaction;
-        if (_report is not null) reaction = _report(failure);
-        else if ((_system ?? EngineScope.Current?.Services?.Find<IFailureSystem>()) is { } system) reaction = system.Report(failure);
-        else reaction = FailureReactions.Default(failure.Level);
-
-        failure.MarkReported(reaction);
-    }
-
-    private static void ThrowIfStops(Failure? failure, Exception exception)
-    {
-        if (failure?.Reaction is not { } reaction || !reaction.Stops()) return;
-
-        // The exception of the engine as it was thrown; any other inside a failure of the engine
-        if (exception is FailureException) ExceptionDispatchInfo.Capture(exception).Throw();
-        throw new FailureException(failure);
-    }
-
-    private void AddRule(Rule rule)
-    {
-        ThrowIfDisposed();
-        while (true)
-        {
-            var current = Volatile.Read(ref _rules);
-            if (Interlocked.CompareExchange(ref _rules, [.. current, rule], current) == current) return;
-        }
-    }
-
-    // The last ones only, once there are as many as it keeps
-    private void Keep(Failure failure)
-    {
-        while (true)
-        {
-            var current = Volatile.Read(ref _failures);
-            Failure[] next;
-            if (current.Length < _keeps)
-            {
-                next = [.. current, failure];
-            }
-            else
-            {
-                next = new Failure[_keeps];
-                Array.Copy(current, current.Length - _keeps + 1, next, 0, _keeps - 1);
-                next[_keeps - 1] = failure;
-            }
-
-            if (Interlocked.CompareExchange(ref _failures, next, current) == current) return;
-        }
-    }
-
-    private void ThrowIfDisposed()
-    {
-        if (_disposed) throw new ObjectDisposedException(nameof(Catcher));
-    }
-
-    private sealed record Rule(Type Type, Action<Exception>? Handler, FailureLevel? Level);
 }

@@ -28,6 +28,9 @@ app.Configure(config =>
     config.AddCommand<UninstallCommand>("uninstall")
         .WithDescription("Remove an installation: back to a plain checkout of the core, unknown to the machine");
 
+    config.AddCommand<RunCommand>("run")
+        .WithDescription("Build and run a game or a tool of the solution; arguments after -- go to it");
+
     config.AddBranch("modules", modules =>
     {
         modules.SetDescription("Engine modules");

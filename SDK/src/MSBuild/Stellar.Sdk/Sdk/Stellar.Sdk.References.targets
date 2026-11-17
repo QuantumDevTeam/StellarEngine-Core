@@ -39,12 +39,21 @@
         <_StellarUnknownModule Remove="@(StellarModuleInfo)"/>
     </ItemGroup>
 
-    <!-- How each one is linked: pinned by the manifest, or by the project -->
+    <!--
+        How each one is linked: pinned by the manifest, or by the project. The metadata is LinkMode, not Link: Link is
+        the display path of a linked file to MSBuild and the IDEs, and a reference made from the catalog carries its
+        metadata, so it would show up as a file of the project. A catalog written before 0.9 has Link: it is read
+        until 'stellar modules sync' writes it again.
+    -->
     <ItemGroup>
-        <_StellarAsSources Include="@(_StellarResolvedModule->WithMetadataValue('Link', 'Sources'))"/>
-        <_StellarAsPackage Include="@(_StellarResolvedModule->WithMetadataValue('Link', 'Package'))"/>
-        <_StellarAsSources Include="@(_StellarResolvedModule->WithMetadataValue('Link', 'Default'))" Condition="'$(StellarPrecompiled)' != 'true'"/>
-        <_StellarAsPackage Include="@(_StellarResolvedModule->WithMetadataValue('Link', 'Default'))" Condition="'$(StellarPrecompiled)' == 'true'"/>
+        <_StellarResolvedModule Update="@(_StellarResolvedModule)">
+            <LinkMode Condition="'%(_StellarResolvedModule.LinkMode)' == ''">%(_StellarResolvedModule.Link)</LinkMode>
+            <Link Condition="'%(_StellarResolvedModule.Link)' != ''"/>
+        </_StellarResolvedModule>
+        <_StellarAsSources Include="@(_StellarResolvedModule->WithMetadataValue('LinkMode', 'Sources'))"/>
+        <_StellarAsPackage Include="@(_StellarResolvedModule->WithMetadataValue('LinkMode', 'Package'))"/>
+        <_StellarAsSources Include="@(_StellarResolvedModule->WithMetadataValue('LinkMode', 'Default'))" Condition="'$(StellarPrecompiled)' != 'true'"/>
+        <_StellarAsPackage Include="@(_StellarResolvedModule->WithMetadataValue('LinkMode', 'Default'))" Condition="'$(StellarPrecompiled)' == 'true'"/>
     </ItemGroup>
 
     <ItemGroup>

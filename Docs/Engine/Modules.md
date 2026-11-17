@@ -29,7 +29,7 @@ stellar modules build --tests --pack
 A module developed in its own repository stays there:
 
 ```bash
-stellar modules add F:/project/CS/Stellar.Logging
+stellar modules add ../Stellar.Logging
 ```
 
 It is then part of the installation exactly like a folder of `modules/`, and gets a `NuGet.config` pointing at the

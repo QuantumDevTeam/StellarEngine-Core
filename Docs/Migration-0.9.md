@@ -142,6 +142,17 @@ module implements and attaches to an engine (`Profiler.Attach`); `ProfilerEvent`
 (`Abi/Profiling.h`). The runtime marks frames, phases, timers, posted work and stages, and, on demand, every call of a
 participant.
 
+## Solutions and `stellar run`
+
+`stellar project new` makes a solution: `Name.sln`, `Name.stellar.solution`, `global.json` and `NuGet.config` at the
+root, the project in `Name/`; the engine sources it is built against in Debug are in the solution folders `Engine` and
+`Modules`. `--flat` keeps the old layout. `stellar run` builds and runs from anywhere in the solution, by the profiles of
+`.stellar.solution`. The templates keep their project in a folder `__ProjectName__/`.
+
+In the catalog of modules, how a module is linked is the metadata `LinkMode`, no longer `Link`, which IDEs read as the
+display path of a file: the references to the engine showed up as files of the project. Run `stellar modules sync` to
+write the catalog again; an old one is still read.
+
 ## Code outside any engine
 
 `EngineScope.Resolve()` is what Stellar.Core and the wrappers use to find the current engine. Outside any engine it
