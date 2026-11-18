@@ -149,6 +149,15 @@ root, the project in `Name/`; the engine sources it is built against in Debug ar
 `Modules`. `--flat` keeps the old layout. `stellar run` builds and runs from anywhere in the solution, by the profiles of
 `.stellar.solution`. The templates keep their project in a folder `__ProjectName__/`.
 
+A game or a library takes the engine from its packages in every configuration, and keeps `bin/` and `obj/` next to
+itself: the IDE shows the engine as a dependency and the project as its own files. `"Engine": "Sources"` in the
+`.stellar.solution`, then `stellar solution sync`, brings back the sources in Debug. Modules and tools of the
+installation are unchanged: sources in Debug, `artifacts/`.
+
+A game lists its modules in a property, `<StellarDependencies>Stellar.FileSystem</StellarDependencies>`, or declares one
+as a package, `<PackageReference Include="Stellar.FileSystem"/>`, which its NuGet window can add.
+`<StellarDependency Include="..."/>` still works, but Rider shows it as a missing file of the project. Packing again under the same version takes the old copy out of the NuGet cache.
+
 In the catalog of modules, how a module is linked is the metadata `LinkMode`, no longer `Link`, which IDEs read as the
 display path of a file: the references to the engine showed up as files of the project. Run `stellar modules sync` to
 write the catalog again; an old one is still read.

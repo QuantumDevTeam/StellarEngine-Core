@@ -101,6 +101,7 @@ public class SolutionScaffolderTests
     private static ProjectScaffolder Scaffolder(TempDirectory directory)
     {
         directory.Write("templates/Game/global.json", "{}");
+        directory.Write("templates/Game/Directory.Build.props", "<Project/>");
         directory.Write("templates/Game/__ProjectName__.stellar.solution", "{ \"Run\": { \"Default\": \"{{ProjectName}}\" } }");
         directory.Write("templates/Game/__ProjectName__/__ProjectName__.csproj", "<StellarSdkUsage>ExecutableModule</StellarSdkUsage>");
         directory.Write("templates/Game/__ProjectName__/EntryPoint.cs", "namespace {{ProjectName}};");
@@ -132,6 +133,55 @@ public class SolutionScaffolderTests
 
         Directory.GetFileSystemEntries(output).Select(Path.GetFileName).Should()
             .BeEquivalentTo(["global.json", "Demo.csproj", "EntryPoint.cs"]);
+    }
+
+    [Fact]
+    public void Sync_WritesTheProjectsOfTheSolution_AndTheEngineTheyReference()
+    {
+        using var directory = new TempDirectory();
+        directory.Write("Demo.stellar.solution", "{ \"Engine\": \"Sources\" }");
+        var game = Path.GetFullPath(directory.Write("Demo/Demo.csproj"));
+        var tools = Path.GetFullPath(directory.Write("Tools/Tools.csproj"));
+        directory.Write("Demo/bin/Debug/Copy.csproj");
+        var core = Path.GetFullPath(directory.Write("stellar/Core/Stellar.Core.csproj"));
+        var references = new FakeReferences(new()
+        {
+            ["Demo.csproj"] = [core], ["Tools.csproj"] = [], ["Stellar.Core.csproj"] = []
+        });
+
+        var solution = StellarSolution.Find(Path.Combine(directory.Path, "Demo"))!;
+        var path = solution.Sync(new SolutionGenerator(Path.Combine(directory.Path, "stellar"), references, NullToolLogger.Instance));
+
+        solution.File.Engine.Should().Be("Sources");
+        path.Should().Be(Path.Combine(directory.Path, "Demo.sln"));
+        var text = File.ReadAllText(path);
+        text.Should().Contain("Demo\\Demo.csproj").And.Contain("Tools\\Tools.csproj").And.NotContain("Copy.csproj");
+        references.Read.Should().Contain("Stellar.Core.csproj");
+        _ = (game, tools);
+    }
+}
+
+public class PackageCacheTests
+{
+    [Fact]
+    public void APackageMadeAgain_TakesItsOldCopyOutOfTheCache_AndLeavesTheFreshOnes()
+    {
+        using var directory = new TempDirectory();
+        var feed = Path.Combine(directory.Path, "packages");
+        var cache = Path.Combine(directory.Path, "cache");
+        var fresh = directory.Write("packages/Stellar.Core.0.9.0.nupkg");
+        var kept = directory.Write("packages/Stellar.Kernel.0.9.0.nupkg");
+        var oldCopy = directory.Write("cache/stellar.core/0.9.0/.nupkg.metadata");
+        var freshCopy = directory.Write("cache/stellar.kernel/0.9.0/.nupkg.metadata");
+        File.SetLastWriteTimeUtc(oldCopy, DateTime.UtcNow.AddHours(-1));
+        File.SetLastWriteTimeUtc(fresh, DateTime.UtcNow);
+        File.SetLastWriteTimeUtc(kept, DateTime.UtcNow.AddHours(-2));
+        File.SetLastWriteTimeUtc(freshCopy, DateTime.UtcNow.AddHours(-1));
+
+        var removed = Stellar.Tools.Installation.PackageCache.RefreshStale(feed, cache, NullToolLogger.Instance);
+
+        removed.Should().ContainSingle().Which.Should().EndWith(Path.Combine("stellar.core", "0.9.0"));
+        Directory.Exists(Path.Combine(cache, "stellar.kernel", "0.9.0")).Should().BeTrue();
     }
 }
 

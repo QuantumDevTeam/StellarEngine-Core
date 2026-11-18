@@ -62,7 +62,10 @@ Every property: [Sdk.Properties](../Reference/Sdk.Properties.md).
 
 ## How references are made
 
-Each `StellarDependency` is looked up in the catalog, and becomes:
+A game lists its modules in a property, `<StellarDependencies>Stellar.FileSystem;Stellar.Audio</StellarDependencies>`,
+or declares one as a package, `<PackageReference Include="Stellar.FileSystem"/>`; a module gets its dependencies from its
+descriptor, as `StellarDependency` items. Each is looked up in the catalog, and
+becomes:
 
 | | `Link` of the manifest | `StellarPrecompiled` |
 |---|---|---|

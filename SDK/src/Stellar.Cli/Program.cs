@@ -31,6 +31,14 @@ app.Configure(config =>
     config.AddCommand<RunCommand>("run")
         .WithDescription("Build and run a game or a tool of the solution; arguments after -- go to it");
 
+    config.AddBranch("solution", solution =>
+    {
+        solution.SetDescription("The solution of a game");
+
+        solution.AddCommand<SyncSolutionCommand>("sync")
+            .WithDescription("Write the .sln again: its projects, and the engine when it works on its sources");
+    }).WithAlias("sln");
+
     config.AddBranch("modules", modules =>
     {
         modules.SetDescription("Engine modules");

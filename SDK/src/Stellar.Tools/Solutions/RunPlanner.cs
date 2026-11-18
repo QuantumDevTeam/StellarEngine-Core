@@ -152,7 +152,10 @@ public static class RunPlanner
                ?? throw new ToolException($"No project {entry} in {solution.Name}");
     }
 
-    private static IReadOnlyList<string> ProjectsIn(string directory)
+    /// <summary>
+    /// Gets the project files under a directory, but in build output and IDE folders.
+    /// </summary>
+    public static IReadOnlyList<string> ProjectsIn(string directory)
     {
         var found = new List<string>();
         var pending = new Stack<string>([directory]);

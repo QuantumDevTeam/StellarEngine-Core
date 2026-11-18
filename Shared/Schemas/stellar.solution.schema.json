@@ -5,6 +5,10 @@
   "type": "object",
   "properties": {
     "$schema": { "type": "string" },
+    "Engine": {
+      "enum": ["Packages", "Sources"],
+      "description": "How the projects take the engine: its packages (the default), or its sources in Debug, listed in the solution after 'stellar solution sync'"
+    },
     "Run": {
       "type": "object",
       "description": "How 'stellar run' runs the solution",

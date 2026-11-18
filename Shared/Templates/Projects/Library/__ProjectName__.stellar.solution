@@ -1,3 +1,4 @@
 {
-  "$schema": "{{StellarSchemasUri}}stellar.solution.schema.json"
+  "$schema": "{{StellarSchemasUri}}stellar.solution.schema.json",
+  "Engine": "Packages"
 }

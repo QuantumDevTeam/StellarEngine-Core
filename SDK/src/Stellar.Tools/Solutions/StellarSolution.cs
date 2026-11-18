@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Stellar.Tools.Diagnostics;
 using Stellar.Tools.Environment;
 
@@ -11,6 +12,13 @@ namespace Stellar.Tools.Solutions;
 /// </summary>
 public sealed class StellarSolutionFile
 {
+    /// <summary>
+    /// Gets or sets how the projects take the engine: <c>Packages</c> (the default), or <c>Sources</c> to work on the
+    /// engine itself, built from its sources in Debug and listed in the solution. The Directory.Build.props of the
+    /// solution reads it for MSBuild.
+    /// </summary>
+    public string? Engine { get; set; }
+
     /// <summary>
     /// Gets or sets how <c>stellar run</c> runs the solution.
     /// </summary>
@@ -102,6 +110,23 @@ public sealed class StellarSolution
         var fileName = Path.GetFileName(full);
         var name = fileName.Substring(0, fileName.Length - Extension.Length);
         return new StellarSolution(name, Path.GetDirectoryName(full)!, StellarJson.Read<StellarSolutionFile>(full));
+    }
+
+    /// <summary>
+    /// Writes the .sln again: the projects in the directory of the solution, and the engine they reference as sources
+    /// in solution folders. What changed in the solution (a project added, "Engine" switched) is then in it; folders
+    /// made by hand in the IDE are not kept.
+    /// </summary>
+    /// <param name="generator">Writes the solution.</param>
+    /// <returns>The path of the .sln.</returns>
+    public string Sync(SolutionGenerator generator)
+    {
+        var projects = RunPlanner.ProjectsIn(Directory).Select(path => new SolutionProject(path)).ToList();
+        if (projects.Count == 0) throw new ToolException($"No project in {Directory}");
+
+        var path = Path.Combine(Directory, Name + SolutionFile.Extension);
+        generator.Generate(path, projects);
+        return path;
     }
 
     /// <summary>

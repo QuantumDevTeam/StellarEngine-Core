@@ -96,6 +96,7 @@ public sealed class ProjectScaffolder
     private static void Flatten(string outputDirectory, string projectDirectory, string projectName)
     {
         File.Delete(Path.Combine(outputDirectory, projectName + StellarSolution.Extension));
+        File.Delete(Path.Combine(outputDirectory, "Directory.Build.props"));
 
         foreach (var entry in Directory.GetFileSystemEntries(projectDirectory))
         {

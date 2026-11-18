@@ -7,6 +7,7 @@ schema is `Shared/Schemas/stellar.solution.schema.json`. For now it says how `st
 
 ```json
 {
+  "Engine": "Packages",
   "Run": {
     "Default": "Game",
     "Profiles": {
@@ -33,6 +34,7 @@ schema is `Shared/Schemas/stellar.solution.schema.json`. For now it says how `st
 Demo/
 ├── Demo.sln                  the projects, and the engine in solution folders
 ├── Demo.stellar.solution     this file
+├── Directory.Build.props     reads "Engine" of this file for MSBuild
 ├── global.json               the version of Stellar.Sdk
 ├── NuGet.config              the local feed of the installation
 └── Demo/                     the project
@@ -41,10 +43,19 @@ Demo/
     └── EntryPoint.cs
 ```
 
-In Debug a project is built against the sources of the engine, so the `.sln` lists them, apart from the game: the
-projects of the core (Kernel, Core, Runtime, the wrapper) in the solution folder `Engine`, the modules of the
-installation in `Modules`. They are what the build references (MSBuild is asked), and only Debug builds them: Release
-takes the engine from its packages. `--flat` makes the layout without a solution: the project in the directory itself.
+The projects take the engine from its packages: the engine is a dependency, and the `.sln` lists your projects only.
+`--flat` makes the layout without a solution: the project in the directory itself.
+
+## `Engine`
+
+`Packages`, the default, or `Sources`: the projects build the engine and its modules from their sources in Debug, to
+work on the engine itself. MSBuild reads no JSON, so the `Directory.Build.props` of the solution looks for the word in
+this file and sets `StellarEngine`. After switching, `stellar solution sync` writes the `.sln` again: an IDE loads a
+referenced project only from the solution, so with `Sources` the projects of the core (Kernel, Core, Runtime, the
+wrapper) go to the solution folder `Engine` and the modules of the installation to `Modules`, built by Debug only.
+
+`stellar solution sync` also adds a project you made in the directory of the solution, or a module you started to
+depend on. It writes the `.sln` from scratch: solution folders made by hand in the IDE are not kept.
 
 ## `Run`
 
