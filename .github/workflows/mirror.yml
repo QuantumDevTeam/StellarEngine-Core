@@ -4,14 +4,21 @@ name: Mirror
 #
 # The mirror is never worked in: every commit of it is a snapshot made by scripts/mirror.ps1, here or on a machine.
 # This workflow takes the list of components from the .orchestra file of the last snapshot, clones each at its
-# default branch, makes a new snapshot when anything changed, pushes it, and starts the docs workflow (a push made
-# with the token of a workflow starts no other workflow by itself).
+# default branch, makes a new snapshot when anything changed and pushes it. A push with a deploy key starts the
+# workflows of the mirror as any push does: the docs workflow builds the site.
 #
 # It lives in the core like everything the mirror holds, but runs only where the repository variable
 # STELLAR_MIRROR is 'true' (Settings -> Secrets and variables -> Actions -> Variables): in the mirror.
 # Public components work with the token of the workflow. A component it cannot clone (a private repository) is kept
 # as the mirror has it; the secret STELLAR_MIRROR_TOKEN (a fine-grained token with read access to their contents)
 # lets the workflow refresh private ones too.
+#
+# The rulesets of the mirror let nobody write its branch, and the token of a workflow can neither pass a ruleset nor
+# change a file of .github/workflows/, which a snapshot does whenever the core did. So the snapshot is pushed over SSH
+# with a deploy key. Set once, in the mirror:
+#   - Settings -> Deploy keys: the public half, with write access;
+#   - Settings -> Secrets and variables -> Actions: the private half, as STELLAR_MIRROR_DEPLOY_KEY;
+#   - Settings -> Rules -> the ruleset of the branch: "Deploy keys" in the bypass list.
 # The first snapshot comes from a machine: scripts/mirror.ps1 -Push. After that this workflow is the only writer:
 # on a machine, mirror.ps1 without -Push shows the next snapshot, Run workflow here publishes it.
 
@@ -22,7 +29,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: mirror
@@ -45,7 +51,6 @@ jobs:
         shell: pwsh
         env:
           COMPONENTS_TOKEN: ${{ secrets.STELLAR_MIRROR_TOKEN || github.token }}
-          MIRROR_TOKEN: ${{ github.token }}
         run: |
           if (-not (Test-Path .orchestra)) {
             throw 'No .orchestra here: make the first snapshot on a machine with scripts/mirror.ps1 -Push'
@@ -66,8 +71,6 @@ jobs:
           }
 
           $mirrorRepository = 'https://github.com/${{ github.repository }}'
-          # The mirror itself is written with the token of this workflow
-          Set-Credentials $mirrorRepository $env:MIRROR_TOKEN
 
           $workspace = Join-Path $env:RUNNER_TEMP 'orchestra'
           $components = @((Get-Content .orchestra -Raw | ConvertFrom-Json).Components)
@@ -97,7 +100,22 @@ jobs:
       - name: Snapshot and push
         id: snapshot
         shell: pwsh
+        env:
+          DEPLOY_KEY: ${{ secrets.STELLAR_MIRROR_DEPLOY_KEY }}
         run: |
+          if (-not $env:DEPLOY_KEY) {
+            throw 'No STELLAR_MIRROR_DEPLOY_KEY: the ruleset of the mirror lets only its deploy key write (see the head of mirror.yml)'
+          }
+          $ssh = Join-Path $env:RUNNER_TEMP 'mirror-ssh'
+          New-Item -ItemType Directory $ssh | Out-Null
+          # LF and a newline at the end, or ssh does not take the key
+          [System.IO.File]::WriteAllText("$ssh/key", $env:DEPLOY_KEY.Replace("`r", '').Trim() + "`n")
+          chmod 600 "$ssh/key"
+          # The host key of github.com (https://api.github.com/meta): never trusted on first use
+          [System.IO.File]::WriteAllText("$ssh/known_hosts",
+            "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl`n")
+          $env:GIT_SSH_COMMAND = "ssh -i $ssh/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$ssh/known_hosts"
+
           $workspace = '${{ steps.workspace.outputs.path }}'
           $keep = @('${{ steps.workspace.outputs.keep }}' -split ',' | Where-Object { $_ })
 
@@ -109,7 +127,7 @@ jobs:
 
           # Parameters by name (a hashtable): an array splatted into a script binds by position, and '-Tag' once
           # became the branch of the mirror
-          $arguments = @{ Remote = 'https://github.com/${{ github.repository }}.git'; Push = $true; Keep = $keep }
+          $arguments = @{ Remote = 'git@github.com:${{ github.repository }}.git'; Push = $true; Keep = $keep }
           if ($release) { $arguments.Tag = $tag }
           & "$workspace/scripts/mirror.ps1" @arguments
           "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
@@ -150,8 +168,3 @@ jobs:
           if ($version.Contains('-')) { $flags += '--prerelease' }
           gh release create '${{ steps.snapshot.outputs.tag }}' --repo '${{ github.repository }}' --verify-tag --title "StellarEngine $version" --notes-file $notesFile @flags
           if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }
-
-      - name: Build the site
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run docs.yml --repo '${{ github.repository }}' --ref master
