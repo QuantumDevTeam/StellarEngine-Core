@@ -198,10 +198,9 @@ when anything changed and pushes it, which starts the docs workflow. A component
 kept as the mirror has it (`scripts/mirror.ps1 -Keep`); the secret `STELLAR_MIRROR_TOKEN` lets it read private ones
 too. The first snapshot comes from a machine: `scripts/mirror.ps1 -Push`.
 
-The rulesets of the mirror let nobody write its branch, so the workflow pushes over SSH with a deploy key of the
-mirror: its private half is the secret `STELLAR_MIRROR_DEPLOY_KEY`, and the ruleset has *Deploy keys* in its bypass
-list. The token of a workflow does not do: it passes no ruleset, and cannot change the files of `.github/workflows/`.
-A new component gets into `.orchestra` with a snapshot made on a machine that holds the key.
+The rulesets of the mirror let nobody write its branch, so the workflow pushes with the token of a GitHub App, installed
+on the mirror only and in the bypass list of the ruleset (`STELLAR_MIRROR_APP_ID`, `STELLAR_MIRROR_APP_KEY`). The token
+of a workflow does not do: it passes no ruleset, and cannot change the files of `.github/workflows/`.
 
 After that the workflow is the only writer of the mirror: on a machine, `scripts/mirror.ps1` without `-Push` shows
 what the next snapshot would be, and Run workflow publishes it. A snapshot is always made on top of the last one of
