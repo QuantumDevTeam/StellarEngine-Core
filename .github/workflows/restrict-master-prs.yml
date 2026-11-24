@@ -4,6 +4,11 @@ on:
   pull_request_target:
     types: [opened, reopened]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   restrict:
     uses: QuantumDevTeam/.github/.github/workflows/restrict-master-prs.yml@master
