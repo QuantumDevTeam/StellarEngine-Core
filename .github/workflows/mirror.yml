@@ -4,7 +4,7 @@ name: Mirror
 #
 # The mirror is never worked in: every commit of it is a snapshot made by scripts/mirror.ps1, here or on a machine.
 # This workflow takes the list of components from the .orchestra file of the last snapshot, clones each at its
-# default branch, makes a new snapshot when anything changed and pushes it. A push with a deploy key starts the
+# default branch, makes a new snapshot when anything changed and pushes it. A push with the token of an app starts the
 # workflows of the mirror as any push does: the docs workflow builds the site.
 #
 # It lives in the core like everything the mirror holds, but runs only where the repository variable
@@ -14,11 +14,12 @@ name: Mirror
 # lets the workflow refresh private ones too.
 #
 # The rulesets of the mirror let nobody write its branch, and the token of a workflow can neither pass a ruleset nor
-# change a file of .github/workflows/, which a snapshot does whenever the core did. So the snapshot is pushed over SSH
-# with a deploy key. Set once, in the mirror:
-#   - Settings -> Deploy keys: the public half, with write access;
-#   - Settings -> Secrets and variables -> Actions: the private half, as STELLAR_MIRROR_DEPLOY_KEY;
-#   - Settings -> Rules -> the ruleset of the branch: "Deploy keys" in the bypass list.
+# change a file of .github/workflows/, which a snapshot does whenever the core did. So the snapshot is pushed with the
+# token of a GitHub App of the organization. Set once:
+#   - the app: repository permissions Contents and Workflows, read and write; installed on the mirror only;
+#   - the mirror, Settings -> Secrets and variables -> Actions: the variable STELLAR_MIRROR_APP_ID (its client ID) and
+#     the secret STELLAR_MIRROR_APP_KEY (its private key);
+#   - the mirror, Settings -> Rules -> the ruleset of the branch: the app in the bypass list.
 # The first snapshot comes from a machine: scripts/mirror.ps1 -Push. After that this workflow is the only writer:
 # on a machine, mirror.ps1 without -Push shows the next snapshot, Run workflow here publishes it.
 
@@ -45,6 +46,16 @@ jobs:
         with:
           # Its own credentials would add a second Authorization header to every request to github.com
           persist-credentials: false
+
+      # Writes the mirror: a token of this job only, for this repository and these two permissions
+      - name: Token of the mirror app
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.STELLAR_MIRROR_APP_ID }}
+          private-key: ${{ secrets.STELLAR_MIRROR_APP_KEY }}
+          permission-contents: write
+          permission-workflows: write
 
       - name: Clone the components
         id: workspace
@@ -101,20 +112,13 @@ jobs:
         id: snapshot
         shell: pwsh
         env:
-          DEPLOY_KEY: ${{ secrets.STELLAR_MIRROR_DEPLOY_KEY }}
+          MIRROR_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          if (-not $env:DEPLOY_KEY) {
-            throw 'No STELLAR_MIRROR_DEPLOY_KEY: the ruleset of the mirror lets only its deploy key write (see the head of mirror.yml)'
+          # The same form of credentials as for the components: in a header, for both spellings of the repository
+          $basic = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-access-token:$env:MIRROR_TOKEN"))
+          foreach ($url in 'https://github.com/${{ github.repository }}', 'https://github.com/${{ github.repository }}.git') {
+            git config --global --replace-all "http.$url.extraheader" "AUTHORIZATION: basic $basic"
           }
-          $ssh = Join-Path $env:RUNNER_TEMP 'mirror-ssh'
-          New-Item -ItemType Directory $ssh | Out-Null
-          # LF and a newline at the end, or ssh does not take the key
-          [System.IO.File]::WriteAllText("$ssh/key", $env:DEPLOY_KEY.Replace("`r", '').Trim() + "`n")
-          chmod 600 "$ssh/key"
-          # The host key of github.com (https://api.github.com/meta): never trusted on first use
-          [System.IO.File]::WriteAllText("$ssh/known_hosts",
-            "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl`n")
-          $env:GIT_SSH_COMMAND = "ssh -i $ssh/key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$ssh/known_hosts"
 
           $workspace = '${{ steps.workspace.outputs.path }}'
           $keep = @('${{ steps.workspace.outputs.keep }}' -split ',' | Where-Object { $_ })
@@ -127,7 +131,7 @@ jobs:
 
           # Parameters by name (a hashtable): an array splatted into a script binds by position, and '-Tag' once
           # became the branch of the mirror
-          $arguments = @{ Remote = 'git@github.com:${{ github.repository }}.git'; Push = $true; Keep = $keep }
+          $arguments = @{ Remote = 'https://github.com/${{ github.repository }}.git'; Push = $true; Keep = $keep }
           if ($release) { $arguments.Tag = $tag }
           & "$workspace/scripts/mirror.ps1" @arguments
           "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
