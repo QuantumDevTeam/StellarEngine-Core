@@ -48,12 +48,12 @@ module needs the new `using` and a rebuild. A module built against 0.9 does not 
 
 | Before | Now |
 |---|---|
-| `ILogger : IRegistrableQuant` | `ILogger : IQuant`: a logger is found by its identifier, in a catalog, and is not put into a registry |
+| `ILogger : IRegistrableQuant` | `ILogger : IQuant`: a logger is found by its name, in a catalog, and is not put into a registry |
 | `ILogger`: `Log`, `LogWithoutFormat` | the same, and `Start()`, `Stop()`: a logger can be switched on and off |
-| nothing | `ILoggerCatalog : ICatalog<string, ILogger>`, with `AddLogger`, `GetLogger(identifier)`, `PopLogger(identifier)` |
-| nothing | `BaseLogger` (for `net` only): one logger that writes into every logger of the `ILoggerCatalog` of the current engine |
+| nothing | `ILoggerCatalog : ICatalog<string, ILogger>`: the loggers of an engine by name, with the members of any catalog |
 | nothing | `LoggerExtensions`: `Info`, `Debug`, `Success`, `Warning`, `Error`, `Exception(message, exception)`, `Separator` |
-| nothing | `LogFormat(Format, ColorizedFormat)` |
+| `LogLevel`: `Info`, `Debug`, `Success`, `Warning`, `Error`, `Exception` | in the order of severity: `Debug` is 0 and `Info` is 1; the rest keep their values. Rebuild what stores or compares the numbers |
+| nothing | `LogFormat(Format, ColorizedFormat)`, and `LoggerFormat`: one `LogFormat` per level (`ForLevel`), with `LoggerFormat.Default` |
 
 A logger of a module is added to the catalog when the module starts and taken out when it stops:
 
@@ -61,15 +61,16 @@ A logger of a module is added to the catalog when the module starts and taken ou
 public override int Run<TContext>(ref readonly TContext context)
 {
     _catalog = context.Services?.Find<ILoggerCatalog>();
-    _catalog?.AddLogger(_logger);
+    _catalog?.TryAdd(Name, _logger);
     return 0;
 }
 
-public override void RequestStop<TContext>(ref readonly TContext context) => _catalog?.PopLogger(_logger.UID);
+public override void RequestStop<TContext>(ref readonly TContext context) => _catalog?.Remove(Name);
 ```
 
-The catalog is published by the logging module. Without one `Find<ILoggerCatalog>()` is `null`, and `BaseLogger` has
-nobody to write to. A class that implemented `ILogger` implements `Start` and `Stop` now.
+The catalog is published by the logging module, which also publishes the `ILogger` that writes into every logger of the
+catalog. Without one `Find<ILoggerCatalog>()` is `null`. A class that implemented `ILogger` implements
+`Start` and `Stop` now.
 
 ## Modules of a solution
 
