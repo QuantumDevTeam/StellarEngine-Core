@@ -271,7 +271,7 @@ wins:
 | `ModuleInitializationParallelism` | `1` | How many modules of one level start at once |
 | `Verbose` | `false` | The runtime tells every step on the error output |
 
-Settings the runtime does not know stay in `RuntimeConfiguration.Settings` for the modules.
+Modules find all of them in `RuntimeConfiguration.Settings`, the command line included, by names in any case.
 
 ## Exit codes
 

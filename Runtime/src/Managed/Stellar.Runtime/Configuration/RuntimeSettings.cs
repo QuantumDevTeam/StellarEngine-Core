@@ -1,4 +1,5 @@
 using System.Globalization;
+
 using Stellar.Kernel.Configuration;
 
 namespace Stellar.Runtime.Configuration;
@@ -77,18 +78,18 @@ public sealed class RuntimeSettings
     /// <returns>The settings.</returns>
     public static RuntimeSettings Create(RuntimeConfiguration? configuration, IEnumerable<string>? arguments = null)
     {
-        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, string> values = new(StringComparer.OrdinalIgnoreCase);
 
         if (configuration is not null)
-            foreach (var pair in configuration.Settings)
+            foreach (KeyValuePair<string, string> pair in configuration.Settings)
                 values[pair.Key] = pair.Value;
 
-        foreach (var argument in arguments ?? [])
+        foreach (string argument in arguments ?? [])
         {
             if (!argument.StartsWith(CommandLinePrefix, StringComparison.OrdinalIgnoreCase)) continue;
 
-            var setting = argument[CommandLinePrefix.Length..];
-            var separator = setting.IndexOf('=');
+            string setting = argument[CommandLinePrefix.Length..];
+            int separator = setting.IndexOf('=');
 
             if (separator > 0)
                 values[setting[..separator]] = setting[(separator + 1)..];
@@ -109,15 +110,27 @@ public sealed class RuntimeSettings
         return _values.GetValueOrDefault(name);
     }
 
+    /// <summary>
+    /// Gets every setting as modules see them: the project, then the command line. Names in any case.
+    /// </summary>
+    /// <returns>A copy.</returns>
+    public Dictionary<string, string> ToDictionary()
+    {
+        return new Dictionary<string, string>(_values, StringComparer.OrdinalIgnoreCase);
+    }
+
     private bool GetBoolean(string name, bool fallback)
     {
-        return _values.TryGetValue(name, out var value) && bool.TryParse(value, out var result) ? result : fallback;
+        return _values.TryGetValue(name, out string? value)
+               && bool.TryParse(value, out bool result)
+            ? result
+            : fallback;
     }
 
     private double GetDouble(string name, double fallback)
     {
-        return _values.TryGetValue(name, out var value) &&
-               double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var result)
+        return _values.TryGetValue(name, out string? value)
+               && double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double result)
             ? result
             : fallback;
     }
