@@ -20,11 +20,13 @@ stellar modules build --tests --pack
 |---|---|
 | `modules new` | Renders `Shared/Templates/Modules/<template>` into `modules/<Id>/`, with its documentation site (`Docs/`, `docfx.json`, a Pages workflow, a placeholder icon in `Branding/`), and syncs |
 | `modules sync` | Finds the modules, applies the manifest, checks the rules, writes the catalog |
-| `modules build` | For each module in load order, with the dependencies of the selected ones: native projects (MSBuild of Visual Studio), the managed project, the tests, the package |
+| `modules build` | For each module in load order, with the dependencies of the selected ones: native projects (MSBuild of Visual Studio), the managed project, the package (`--pack`), the tests (`--tests`) |
 | `modules list` | The modules in load order, where each came from, how it is linked |
 
 `modules build --plan` shows the commands without running them; `--no-native`, `--wrapper Managed`,
-`-c Release` change what is built.
+`-c Release` change what is built. The order of `--tests` and `--pack` means nothing: the package always goes first.
+In Debug the tests take the module from its sources; in Release they take the package, so `-c Release --tests` needs
+`--pack` with it, or it fails without a package and tests the one packed last time when there is one.
 
 A module developed in its own repository stays there:
 
