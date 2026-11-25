@@ -37,50 +37,30 @@ internal readonly struct ConfigReadResult
 
 internal static class MinimalJson
 {
-    public static string? GetNestedString(string json, string parentKey, string childKey)
+    private static int FindStringEnd(string json, int start)
     {
-        var parentIndex = json.IndexOf($"\"{parentKey}\"", StringComparison.Ordinal);
-        if (parentIndex < 0) return null;
+        for (int i = start; i < json.Length; i++)
+        {
+            if (json[i] == '\\') // skip escaped char
+            {
+                i++;
+                continue;
+            }
 
-        var colonIndex = json.IndexOf(':', parentIndex);
-        if (colonIndex < 0) return null;
+            if (json[i] == '"')
+                return i;
+        }
 
-        var objStart = json.IndexOf('{', colonIndex);
-        if (objStart < 0) return null;
-
-        var objEnd = FindMatchingBrace(json, objStart);
-        if (objEnd < 0) return null;
-
-        // from here on only the inside of Project { ... } is looked at
-        var span = json.Substring(objStart, objEnd - objStart + 1);
-
-        return GetString(span, childKey);
-    }
-
-    public static string? GetString(string json, string key)
-    {
-        var keyIndex = json.IndexOf($"\"{key}\"", StringComparison.Ordinal);
-        if (keyIndex < 0) return null;
-
-        var colonIndex = json.IndexOf(':', keyIndex);
-        if (colonIndex < 0) return null;
-
-        var startQuote = json.IndexOf('"', colonIndex + 1);
-        if (startQuote < 0) return null;
-
-        var endQuote = FindStringEnd(json, startQuote + 1);
-        if (endQuote < 0) return null;
-
-        return json.Substring(startQuote + 1, endQuote - startQuote - 1);
+        return -1;
     }
 
     private static int FindMatchingBrace(string json, int start)
     {
-        var depth = 0;
+        int depth = 0;
 
-        for (var i = start; i < json.Length; i++)
+        for (int i = start; i < json.Length; i++)
         {
-            var c = json[i];
+            char c = json[i];
 
             if (c == '{')
             {
@@ -102,21 +82,41 @@ internal static class MinimalJson
         return -1;
     }
 
-    private static int FindStringEnd(string json, int start)
+    public static string? GetString(string json, string key)
     {
-        for (var i = start; i < json.Length; i++)
-        {
-            if (json[i] == '\\') // skip escaped char
-            {
-                i++;
-                continue;
-            }
+        int keyIndex = json.IndexOf($"\"{key}\"", StringComparison.Ordinal);
+        if (keyIndex < 0) return null;
 
-            if (json[i] == '"')
-                return i;
-        }
+        int colonIndex = json.IndexOf(':', keyIndex);
+        if (colonIndex < 0) return null;
 
-        return -1;
+        int startQuote = json.IndexOf('"', colonIndex + 1);
+        if (startQuote < 0) return null;
+
+        int endQuote = FindStringEnd(json, startQuote + 1);
+        if (endQuote < 0) return null;
+
+        return json.Substring(startQuote + 1, endQuote - startQuote - 1);
+    }
+
+    public static string? GetNestedString(string json, string parentKey, string childKey)
+    {
+        int parentIndex = json.IndexOf($"\"{parentKey}\"", StringComparison.Ordinal);
+        if (parentIndex < 0) return null;
+
+        int colonIndex = json.IndexOf(':', parentIndex);
+        if (colonIndex < 0) return null;
+
+        int objStart = json.IndexOf('{', colonIndex);
+        if (objStart < 0) return null;
+
+        int objEnd = FindMatchingBrace(json, objStart);
+        if (objEnd < 0) return null;
+
+        // from here on only the inside of Project { ... } is looked at
+        string span = json.Substring(objStart, objEnd - objStart + 1);
+
+        return GetString(span, childKey);
     }
 }
 
@@ -129,8 +129,7 @@ internal static class StellarProjectConfigReader
 
         try
         {
-            var entryPoint = MinimalJson.GetNestedString(
-                json,
+            string? entryPoint = MinimalJson.GetNestedString(json,
                 "Project",
                 "StellarEntryPoint");
 

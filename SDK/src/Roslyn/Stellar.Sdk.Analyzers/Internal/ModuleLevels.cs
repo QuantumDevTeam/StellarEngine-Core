@@ -69,7 +69,7 @@ internal static class ModuleLevels
 
     public static bool IsCore(string id)
     {
-        return string.Equals(id, "Stellar.Kernel", StringComparison.Ordinal) ||
-               string.Equals(id, "Stellar.Core", StringComparison.Ordinal);
+        return string.Equals(id, "Stellar.Kernel", StringComparison.Ordinal)
+               || string.Equals(id, "Stellar.Core", StringComparison.Ordinal);
     }
 }

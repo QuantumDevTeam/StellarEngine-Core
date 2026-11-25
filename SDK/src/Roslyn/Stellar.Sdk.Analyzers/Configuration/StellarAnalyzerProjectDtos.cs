@@ -7,17 +7,17 @@ namespace Stellar.Sdk.Analyzers.Configuration;
 // These are thin, analyzer-private mirrors of the public DTOs.
 // ─────────────────────────────────────────────────────────────────────────
 
-internal sealed class StellarAnalyzerConfigFile
-{
-    public StellarAnalyzerProjectConfig? Project { get; set; }
-
-    // Runtime section intentionally omitted — analyzers don't need it.
-}
-
 internal sealed class StellarAnalyzerProjectConfig
 {
     public string? StellarEntryPoint { get; set; }
 
     // Other fields (Assets, Localizations …) will be added here
     // as future analyzers need them — zero cost when unused.
+}
+
+internal sealed class StellarAnalyzerConfigFile
+{
+    public StellarAnalyzerProjectConfig? Project { get; set; }
+
+    // Runtime section intentionally omitted — analyzers don't need it.
 }
