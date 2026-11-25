@@ -4,11 +4,15 @@ name: Tests
 # runs it as it is; a module calls it and is checked out into modules/ of a checkout of the core.
 #
 # Windows with the Visual Studio the native toolset asks for (Shared/Build/Stellar.Native.props), C++/CLI included.
+#
+# By itself only on the way into master; on any other branch by hand (Run workflow).
 
 on:
+  workflow_dispatch:
   push:
-    branches: [develop, master]
+    branches: [master]
   pull_request:
+    branches: [master]
   workflow_call:
 
 permissions:
