@@ -2,8 +2,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
+
 using Stellar.Sdk.Analyzers.Configuration;
 using Stellar.Sdk.Analyzers.Diagnostics;
 using Stellar.Sdk.Analyzers.Internal;
@@ -21,6 +24,23 @@ public sealed class StellarEntryPointAnalyzer : DiagnosticAnalyzer
 
     private const string EntryPointBaseFqn = "Stellar.Kernel.EntryPoint.StellarEntryPoint";
     private const string EntryPointAttributeFqn = "Stellar.Kernel.EntryPoint.StellarEntryPointAttribute";
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    private static string ResolveEntryPointTypeName(
+        string rawValue,
+        string? assemblyName
+    )
+    {
+        if (string.IsNullOrEmpty(rawValue)
+            || string.Equals(rawValue, DefaultEntryPointKeyword, StringComparison.OrdinalIgnoreCase))
+            // Convention: {AssemblyName}.EntryPoint in the root namespace
+            return string.IsNullOrEmpty(assemblyName)
+                ? DefaultEntryPointTypeSuffix
+                : $"{assemblyName}.{DefaultEntryPointTypeSuffix}";
+
+        return rawValue; // fully-qualified name written by the developer
+    }
 
     // ── DiagnosticAnalyzer ────────────────────────────────────────────────
 
@@ -45,36 +65,36 @@ public sealed class StellarEntryPointAnalyzer : DiagnosticAnalyzer
     private static void OnCompilationStart(CompilationStartAnalysisContext ctx)
     {
         // 1. Locate .stellar.project in AdditionalFiles
-        var configFile = ctx.Options.AdditionalFiles
+        AdditionalText? configFile = ctx.Options.AdditionalFiles
             .FirstOrDefault(f => f.Path.EndsWith(
                 StellarProjectFileExtension,
                 StringComparison.OrdinalIgnoreCase));
 
         if (configFile is null) return;
 
-        var sourceText = configFile.GetText(ctx.CancellationToken);
+        SourceText? sourceText = configFile.GetText(ctx.CancellationToken);
         if (sourceText is null) return;
 
         // 2. Parse config — bail silently on malformed JSON
         //    (the build task will produce a proper build error for that)
-        var readResult = StellarProjectConfigReader.TryRead(sourceText.ToString());
+        ConfigReadResult readResult = StellarProjectConfigReader.TryRead(sourceText.ToString());
         if (!readResult.IsSuccess) return;
 
-        var rawEntryPointValue =
+        string rawEntryPointValue =
             readResult.Config!.Project?.StellarEntryPoint?.Trim()
             ?? DefaultEntryPointKeyword;
 
         // 3. Resolve well-known Stellar symbols — they may be null if the
         //    kernel assembly isn't referenced, which is fine for pure
         //    library projects; checks will be skipped gracefully.
-        var baseTypeSymbol =
+        INamedTypeSymbol? baseTypeSymbol =
             ctx.Compilation.GetTypeByMetadataName(EntryPointBaseFqn);
-        var attributeTypeSymbol =
+        INamedTypeSymbol? attributeTypeSymbol =
             ctx.Compilation.GetTypeByMetadataName(EntryPointAttributeFqn);
 
         // 4. Collect all types in this compilation that carry [StellarEntryPoint].
         //    ConcurrentBag because RegisterSymbolAction may run in parallel.
-        var decoratedTypes = new ConcurrentBag<INamedTypeSymbol>();
+        ConcurrentBag<INamedTypeSymbol> decoratedTypes = new();
 
         if (attributeTypeSymbol is not null)
             ctx.RegisterSymbolAction(symbolCtx =>
@@ -105,15 +125,13 @@ public sealed class StellarEntryPointAnalyzer : DiagnosticAnalyzer
         string rawEntryPointValue,
         INamedTypeSymbol? baseTypeSymbol,
         INamedTypeSymbol? attributeTypeSymbol,
-        ConcurrentBag<INamedTypeSymbol> decoratedTypes)
+        ConcurrentBag<INamedTypeSymbol> decoratedTypes
+    )
     {
-        var compilation = ctx.Compilation;
-
-        // Resolve the configured type name
-        var resolvedTypeName = ResolveEntryPointTypeName(rawEntryPointValue, compilation.AssemblyName);
+        Compilation compilation = ctx.Compilation;
 
         // Location of the value token inside the .stellar.project file
-        var configValueLocation = JsonTextLocator.FindValueLocation(
+        Location configValueLocation = JsonTextLocator.FindValueLocation(
             sourceText, configFilePath, "StellarEntryPoint");
 
         // ── STLR0104: no entry-point types at all in the module ───────────
@@ -126,7 +144,8 @@ public sealed class StellarEntryPointAnalyzer : DiagnosticAnalyzer
                 compilation.AssemblyName ?? "<module>"));
 
         // ── Resolve the configured type ───────────────────────────────────
-        var configuredType = compilation.GetTypeByMetadataName(resolvedTypeName);
+        string resolvedTypeName = ResolveEntryPointTypeName(rawEntryPointValue, compilation.AssemblyName);
+        INamedTypeSymbol? configuredType = compilation.GetTypeByMetadataName(resolvedTypeName);
 
         // ── STLR0101: type not found ──────────────────────────────────────
         if (configuredType is null)
@@ -140,7 +159,7 @@ public sealed class StellarEntryPointAnalyzer : DiagnosticAnalyzer
 
         // Use the first declaration location on the type itself for STLR0102/0103
         // so the squiggle lands on the class keyword.
-        var typeLocation = configuredType.Locations.FirstOrDefault() ?? Location.None;
+        Location typeLocation = configuredType.Locations.FirstOrDefault() ?? Location.None;
 
         // ── STLR0102: missing inheritance ─────────────────────────────────
         if (baseTypeSymbol is not null
@@ -157,21 +176,5 @@ public sealed class StellarEntryPointAnalyzer : DiagnosticAnalyzer
                 StellarDiagnosticDescriptors.EntryPointMissingAttribute,
                 typeLocation,
                 resolvedTypeName));
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
-
-    private static string ResolveEntryPointTypeName(
-        string rawValue,
-        string? assemblyName)
-    {
-        if (string.IsNullOrEmpty(rawValue)
-            || string.Equals(rawValue, DefaultEntryPointKeyword, StringComparison.OrdinalIgnoreCase))
-            // Convention: {AssemblyName}.EntryPoint in the root namespace
-            return string.IsNullOrEmpty(assemblyName)
-                ? DefaultEntryPointTypeSuffix
-                : $"{assemblyName}.{DefaultEntryPointTypeSuffix}";
-
-        return rawValue; // fully-qualified name written by the developer
     }
 }
