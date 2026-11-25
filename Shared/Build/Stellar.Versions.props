@@ -14,7 +14,7 @@
         <StellarCoreVersion>0.10.0</StellarCoreVersion>
         <StellarRuntimeVersion>0.10.1</StellarRuntimeVersion>
         <StellarToolsVersion>0.3.3</StellarToolsVersion>
-        <StellarSdkVersion>0.4.1</StellarSdkVersion>
+        <StellarSdkVersion>0.4.2</StellarSdkVersion>
         <StellarCliVersion>0.2.4</StellarCliVersion>
 
         <!-- Default version of the engine modules (Stellar.Engine and High-Level Modules) -->
