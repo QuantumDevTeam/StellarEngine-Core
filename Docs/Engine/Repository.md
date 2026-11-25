@@ -182,25 +182,27 @@ A release starts as a decision: a new `StellarOrchesterVersion` in `Shared/Build
 
 1. a push of that version to `master` of the core: `.github/workflows/release.yml` sees a version without a tag, tags
    the commit `v<version>` and publishes a GitHub release of the core with the versions of its components;
-2. the next run of the mirror (`.github/workflows/mirror.yml`, nightly or Run workflow; at once with the secret
-   `STELLAR_DISPATCH_TOKEN` in the core) makes a snapshot with the new core, sees the same version without a tag in
-   the mirror, tags the snapshot `v<version>` and publishes the release of the orchestra: every component, its
-   version and its commit;
+2. that release starts the mirror (`.github/workflows/mirror.yml`) when the core has `STELLAR_MIRROR_APP_ID` and
+   `STELLAR_MIRROR_APP_KEY`; without them Run workflow there does. It makes a snapshot with the new core, sees the same
+   version without a tag in the mirror, tags the snapshot `v<version>` and publishes the release of the orchestra:
+   every component, its version and its commit. It takes the default branch of each module, so the modules of a release
+   are merged there before the core;
 3. the installer installs the latest release by default: it reads `.orchestra` at that tag.
 
 A version with a suffix (`0.9.0-rc.1`) is a pre-release, which the installer takes only when asked for by name.
 
 ### The mirror regenerates itself
 
-`.github/workflows/mirror.yml` runs in the mirror (where the repository variable `STELLAR_MIRROR` is `true`) every
-night and on demand: it clones every component the last `.orchestra` names, at its default branch, makes a snapshot
+`.github/workflows/mirror.yml` runs in the mirror (where the repository variable `STELLAR_MIRROR` is `true`) on a
+release of the core and on demand, never on a timer: it clones every component the last `.orchestra` names, at its default branch, makes a snapshot
 when anything changed and pushes it, which starts the docs workflow. A component it cannot clone (a private repository) is
 kept as the mirror has it (`scripts/mirror.ps1 -Keep`); the secret `STELLAR_MIRROR_TOKEN` lets it read private ones
 too. The first snapshot comes from a machine: `scripts/mirror.ps1 -Push`.
 
 The rulesets of the mirror let nobody write its branch, so the workflow pushes with the token of a GitHub App, installed
 on the mirror only and in the bypass list of the ruleset (`STELLAR_MIRROR_APP_ID`, `STELLAR_MIRROR_APP_KEY`). The token
-of a workflow does not do: it passes no ruleset, and cannot change the files of `.github/workflows/`.
+of a workflow does not do: it passes no ruleset, and cannot change the files of `.github/workflows/`. Run workflow takes
+a new component in its `add` field, `modules/<Name>` or `tools/<Name>`: a public repository of the organization.
 
 After that the workflow is the only writer of the mirror: on a machine, `scripts/mirror.ps1` without `-Push` shows
 what the next snapshot would be, and Run workflow publishes it. A snapshot is always made on top of the last one of

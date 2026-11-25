@@ -23,10 +23,18 @@ name: Mirror
 # The first snapshot comes from a machine: scripts/mirror.ps1 -Push. After that this workflow is the only writer:
 # on a machine, mirror.ps1 without -Push shows the next snapshot, Run workflow here publishes it.
 
+# It never starts by itself on a timer: a release of the core sends 'orchestra-release' (release.yml), or a person
+# presses Run workflow. Run workflow also takes a component the mirror does not hold yet.
+
 on:
+  repository_dispatch:
+    types: [orchestra-release]
   workflow_dispatch:
-  schedule:
-    - cron: '17 3 * * *'
+    inputs:
+      add:
+        description: 'New components, e.g. modules/Stellar.LoggingSystem (comma separated). Empty: the ones of the mirror'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -62,6 +70,8 @@ jobs:
         shell: pwsh
         env:
           COMPONENTS_TOKEN: ${{ secrets.STELLAR_MIRROR_TOKEN || github.token }}
+          # Through the environment, never pasted into the script
+          ADD: ${{ inputs.add }}
         run: |
           if (-not (Test-Path .orchestra)) {
             throw 'No .orchestra here: make the first snapshot on a machine with scripts/mirror.ps1 -Push'
@@ -85,6 +95,13 @@ jobs:
 
           $workspace = Join-Path $env:RUNNER_TEMP 'orchestra'
           $components = @((Get-Content .orchestra -Raw | ConvertFrom-Json).Components)
+          # New components: a repository of the organization of the mirror, at its default branch
+          foreach ($entry in @("$env:ADD" -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+            if ($entry -cnotmatch '^(modules|tools)/([A-Za-z][A-Za-z0-9.-]*)$') { throw "Not modules/<Name> or tools/<Name>: $entry" }
+            $area, $name = $Matches[1], $Matches[2]
+            if ($components | Where-Object { $_.Name -eq $name }) { throw "$name is in the mirror already" }
+            $components += [pscustomobject]@{ Name = $name; Area = $area; Repository = "https://github.com/${{ github.repository_owner }}/$name.git" }
+          }
           foreach ($component in $components) {
             if ("$($component.Repository)" -like 'https://github.com/*' -and ($component.Repository -replace '\.git$', '') -ne $mirrorRepository) {
               Set-Credentials $component.Repository $env:COMPONENTS_TOKEN
@@ -107,6 +124,18 @@ jobs:
           }
           "path=$workspace" >> $env:GITHUB_OUTPUT
           "keep=$($keep -join ',')" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # The core and every component of the snapshot, as it will be pushed
+      - name: Check the marks
+        working-directory: ${{ steps.workspace.outputs.path }}
+        run: |
+          mkdir -p packages
+          dotnet run --project SDK/src/Stellar.Cli/Stellar.Cli.csproj -- marks check --all --stage release
 
       - name: Snapshot and push
         id: snapshot

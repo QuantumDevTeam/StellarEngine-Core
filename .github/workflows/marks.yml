@@ -1,0 +1,34 @@
+name: Marks
+
+# Marks in the comments of the code (Docs/Engine/Marks.md): one that stops a commit, or that nobody knows, does not
+# get in. The hooks of git check the same on a machine; they can be skipped, this cannot.
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  marks:
+    name: Marks
+    if: vars.STELLAR_MIRROR != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # A pull request into master is a release: what may lie in develop may not go there
+      - name: Check the marks
+        env:
+          STAGE: ${{ (github.base_ref == 'master' || github.ref == 'refs/heads/master') && 'release' || 'commit' }}
+        run: |
+          mkdir -p packages
+          dotnet run --project SDK/src/Stellar.Cli/Stellar.Cli.csproj -- marks check --stage "$STAGE"
