@@ -3,9 +3,7 @@ using Stellar.Core.EntryPoints;
 using Stellar.Core.Global;
 using Stellar.Core.Native;
 using Stellar.Core.Quantization;
-using Stellar.Kernel;
 using Stellar.Kernel.Configuration;
-using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.Lifecycle;
 using Stellar.Kernel.Services;
 using Stellar.Kernel.Threading;
@@ -18,7 +16,7 @@ namespace Stellar.Core.Tests;
 /// </summary>
 public class EngineInstanceTests
 {
-    [Fact]
+    [NativeFact]
     public void TwoEngines_HaveTheirOwnServicesAndRegistries()
     {
         var editor = new FakeEngine("Editor");
@@ -57,7 +55,7 @@ public class EngineInstanceTests
         }
     }
 
-    [Fact]
+    [NativeFact]
     public async Task TheScope_FollowsTheWork_IntoAwaitAndOtherThreads()
     {
         var engine = new FakeEngine("Flowing");
@@ -67,7 +65,7 @@ public class EngineInstanceTests
             await Task.Yield();
             CoreEngine.Current.Instance.Should().BeSameAs(engine);
 
-            var seen = await Task.Run(() => CoreEngine.Current.Instance);
+            IEngineInstance? seen = await Task.Run(() => CoreEngine.Current.Instance);
             seen.Should().BeSameAs(engine);
 
             IEngineInstance? onThread = null;
@@ -80,7 +78,7 @@ public class EngineInstanceTests
         CoreEngine.Release(engine);
     }
 
-    [Fact]
+    [NativeFact]
     public void AQuant_LeavesTheRegistryOfTheEngineItWasMadeIn()
     {
         var first = new FakeEngine("First");
@@ -106,11 +104,11 @@ public class EngineInstanceTests
         CoreEngine.Release(second);
     }
 
-    [Fact]
+    [NativeFact]
     public void Releasing_AnEngine_DisposesItsNativeRegistries()
     {
         var engine = new FakeEngine("Short");
-        var native = CoreEngine.For(engine).Native;
+        CoreContext native = CoreEngine.For(engine).Native;
 
         CoreEngine.Release(engine).Should().BeTrue();
 
@@ -119,7 +117,7 @@ public class EngineInstanceTests
         CoreEngine.Release(engine).Should().BeFalse();
     }
 
-    [Fact]
+    [NativeFact]
     public void TheCoreModule_RunsForTheEngineOfItsContext()
     {
         var engine = new FakeEngine("Hosted");
@@ -155,6 +153,6 @@ public class EngineInstanceTests
 
         public IMainThreadDispatcher Dispatcher => throw new NotSupportedException();
 
-        public IServiceCatalog? Services => CoreEngine.For(this).Services;
+        public IServiceCatalog Services => CoreEngine.For(this).Services;
     }
 }

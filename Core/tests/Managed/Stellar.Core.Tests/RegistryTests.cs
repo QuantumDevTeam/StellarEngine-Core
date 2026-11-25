@@ -1,7 +1,6 @@
 using Stellar.Core.Data.Registry;
 using Stellar.Core.Global;
 using Stellar.Core.Quantization;
-using Stellar.Kernel;
 using Stellar.Kernel.Data.Registry;
 using Stellar.Kernel.Lifecycle;
 using Stellar.Kernel.Quantization;
@@ -31,7 +30,7 @@ public class RegistryTests
     public void ADerivedQuant_IsInTheRegistryOfItsBase_AndFoundAsWhatItIs()
     {
         using var player = new Player();
-        var actors = CoreEngine.Current.Registry.Of<Actor>();
+        IRegistry<Actor> actors = CoreEngine.Current.Registry.Of<Actor>();
 
         actors.Get(player.UID).Should().BeSameAs(player);
         actors.Get<Player>(player.UID).Should().BeSameAs(player);
@@ -49,7 +48,7 @@ public class RegistryTests
     public void MarkedTypes_HaveRegistriesOfTheirOwn()
     {
         using var player = new Player();
-        var registries = CoreEngine.Current.Registry;
+        CoreEngine.CoreRegistries registries = CoreEngine.Current.Registry;
 
         registries.Of<Player>().Get(player.UID).Should().BeSameAs(player);
         registries.Of<IDamageable>().Get(player.UID).Should().BeSameAs(player);
@@ -60,9 +59,9 @@ public class RegistryTests
     [Fact]
     public void KeysAndValues_FollowTheRegistry()
     {
-        var registry = CoreEngine.Current.Registry.Of<Crate>();
+        IRegistry<Crate> registry = CoreEngine.Current.Registry.Of<Crate>();
         var first = new Crate();
-        var values = registry.Values;
+        ICollection<Crate> values = registry.Values;
         registry.Values.Should().BeSameAs(values);
 
         using var second = new Crate();
@@ -79,7 +78,7 @@ public class RegistryTests
     public void Dispose_LeavesEveryRegistry()
     {
         var player = new Player();
-        var registries = CoreEngine.Current.Registry;
+        CoreEngine.CoreRegistries registries = CoreEngine.Current.Registry;
 
         player.Dispose();
 
@@ -93,7 +92,7 @@ public class RegistryTests
     public void AnyRegistry_CanTakeAnObject_AndTheObjectKnows()
     {
         using var prop = new Prop();
-        var mine = new Registry<Prop>();
+        Registry<Prop> mine = new();
 
         prop.Registrations.Should().BeEmpty();
         CoreEngine.Current.Registry.Of<Prop>().Exists(prop.UID).Should().BeFalse();
@@ -110,7 +109,7 @@ public class RegistryTests
     public void Dispose_LeavesARegistryMadeByHand()
     {
         var prop = new Prop();
-        var mine = new Registry<Prop>();
+        Registry<Prop> mine = new();
         mine.Register(prop);
 
         prop.Dispose();
@@ -121,23 +120,31 @@ public class RegistryTests
     [Fact]
     public void ATypeWithoutRegistrableObjects_HasNoRegistry()
     {
-        FluentActions.Invoking(() => CoreEngine.Current.Registry.Of(typeof(string))).Should().Throw<ArgumentException>();
+        FluentActions.Invoking(() => CoreEngine.Current.Registry.Of(typeof(string))).Should()
+            .Throw<ArgumentException>();
     }
 
-    [Fact]
+    [NativeFact]
     public void RegistriesOfTwoEngines_AreApart()
     {
         var first = new ScopeEngine("First");
         var second = new ScopeEngine("Second");
 
         Actor actor;
-        using (EngineScope.Enter(first)) actor = new Actor();
+        using (EngineScope.Enter(first))
+        {
+            actor = new Actor();
+        }
 
         CoreEngine.For(first).Registry.Of<Actor>().Exists(actor.UID).Should().BeTrue();
         CoreEngine.For(second).Registry.Of<Actor>().Exists(actor.UID).Should().BeFalse();
 
         // Disposed anywhere, it leaves the registries it is really in
-        using (EngineScope.Enter(second)) actor.Dispose();
+        using (EngineScope.Enter(second))
+        {
+            actor.Dispose();
+        }
+
         CoreEngine.For(first).Registry.Of<Actor>().Exists(actor.UID).Should().BeFalse();
 
         CoreEngine.Release(first);
@@ -148,7 +155,7 @@ public class RegistryTests
 [Collection(DetachedPolicyCollection.Name)]
 public class DetachedPolicyTests
 {
-    [Fact]
+    [NativeFact]
     public void Outside_AnyEngine_TheDefaultIsUsed_UnlessThePolicySaysOtherwise()
     {
         using (EngineScope.Enter(null))
@@ -156,14 +163,18 @@ public class DetachedPolicyTests
             EngineScope.Resolve().Should().BeNull();
             CoreEngine.Current.Should().BeSameAs(CoreEngine.Default);
 
-            var previous = EngineScope.Detached;
+            DetachedPolicy previous = EngineScope.Detached;
             EngineScope.Detached = DetachedPolicy.Throw;
             try
             {
                 FluentActions.Invoking(() => CoreEngine.Current).Should().Throw<InvalidOperationException>();
 
                 var engine = new ScopeEngine("Strict");
-                using (EngineScope.Enter(engine)) CoreEngine.Current.Instance.Should().BeSameAs(engine);
+                using (EngineScope.Enter(engine))
+                {
+                    CoreEngine.Current.Instance.Should().BeSameAs(engine);
+                }
+
                 CoreEngine.Release(engine);
             }
             finally
