@@ -5,9 +5,9 @@ name: Release
 # into the tag v<version> and a GitHub release of the core.
 #
 # The orchestra is released by the mirror: its workflow tags the snapshot with the same version and publishes the
-# release the installer installs. With the secret STELLAR_DISPATCH_TOKEN (a fine-grained token allowed to run the
-# Actions of the mirror) this workflow starts it at once; without it the release of the orchestra waits for the
-# nightly run of the mirror, or for Run workflow there.
+# release the installer installs. With the variable STELLAR_MIRROR_APP_ID and the secret STELLAR_MIRROR_APP_KEY (the app
+# that writes the mirror, see mirror.yml) this workflow starts it at once; without them the release of the orchestra
+# waits for Run workflow in the mirror. Merge the modules into their master before the core: a snapshot takes it.
 #
 # The mirror holds this file too, as everything of the core: it never runs there (STELLAR_MIRROR is 'true').
 
@@ -33,6 +33,17 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      # Nothing that a mark stops is released: a tag cannot be taken back
+      - name: Check the marks
+        run: |
+          mkdir -p packages
+          dotnet run --project SDK/src/Stellar.Cli/Stellar.Cli.csproj -- marks check --stage release
 
       - name: Tag and publish
         id: release
@@ -77,14 +88,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "gh release create $tag failed" }
           "released=true" >> $env:GITHUB_OUTPUT
 
+      # Only a release starts the mirror. Without the app here, Run workflow in the mirror does it
+      - name: Token of the mirror app
+        id: app
+        if: steps.release.outputs.released == 'true' && vars.STELLAR_MIRROR_APP_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.STELLAR_MIRROR_APP_ID }}
+          private-key: ${{ secrets.STELLAR_MIRROR_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: StellarEngine-Mono
+          permission-contents: write
+
       - name: Start the mirror
-        if: steps.release.outputs.released == 'true'
+        if: steps.app.outputs.token != ''
         env:
-          GH_TOKEN: ${{ secrets.STELLAR_DISPATCH_TOKEN }}
-          MIRROR: ${{ vars.STELLAR_MIRROR_REPOSITORY || 'QuantumDevTeam/StellarEngine-Mono' }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::notice::No STELLAR_DISPATCH_TOKEN: the orchestra is released by the next run of the mirror ($MIRROR)"
-            exit 0
-          fi
-          gh workflow run mirror.yml --repo "$MIRROR" --ref master
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: gh api "repos/${{ github.repository_owner }}/StellarEngine-Mono/dispatches" -f event_type=orchestra-release

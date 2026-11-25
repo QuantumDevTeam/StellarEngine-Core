@@ -1,6 +1,9 @@
 using System.ComponentModel;
+
 using Spectre.Console;
 using Spectre.Console.Cli;
+
+using Stellar.Kernel.Configuration.Manifest;
 using Stellar.Kernel.Modules;
 using Stellar.Tools.Building;
 using Stellar.Tools.Diagnostics;
@@ -15,15 +18,15 @@ public sealed class ListModulesCommand
 {
     public override int Execute(CommandContext context)
     {
-        var set = ModuleSynchronizer.Load(StellarInstallation.Locate());
+        ModuleSet set = ModuleSynchronizer.Load(StellarInstallation.Locate());
 
-        var table = new Table()
+        Table table = new Table()
             .AddColumn("#").AddColumn("Module").AddColumn("Version").AddColumn("Level")
             .AddColumn("Source").AddColumn("Link").AddColumn("Dependencies");
 
-        for (var index = 0; index < set.LoadOrder.Count; index++)
+        for (int index = 0; index < set.LoadOrder.Count; index++)
         {
-            var module = set.LoadOrder[index];
+            ResolvedModule module = set.LoadOrder[index];
             table.AddRow(
                 (index + 1).ToString(),
                 module.Id.EscapeMarkup(),
@@ -36,10 +39,10 @@ public sealed class ListModulesCommand
 
         AnsiConsole.Write(table);
 
-        foreach (var id in set.Resolution.Disabled)
+        foreach (string id in set.Resolution.Disabled)
             AnsiConsole.MarkupLineInterpolated($"[grey]disabled: {id}[/]");
 
-        foreach (var warning in set.Resolution.Warnings)
+        foreach (string warning in set.Resolution.Warnings)
             AnsiConsole.MarkupLineInterpolated($"[yellow]{warning}[/]");
 
         return 0;
@@ -91,8 +94,8 @@ public sealed class NewModuleCommand
             throw new ToolException(
                 $"{settings.Level} is the core itself: a module is CoreModule, Runtime, HighLevel or EndPoint");
 
-        var installation = StellarInstallation.Locate();
-        var directory = new ModuleScaffolder(installation, ConsoleToolLogger.Instance)
+        StellarInstallation installation = StellarInstallation.Locate();
+        string directory = new ModuleScaffolder(installation, ConsoleToolLogger.Instance)
             .Create(new ModuleRequest(settings.Id, settings.Level, settings.Description, settings.Template,
                 settings.Output));
 
@@ -114,7 +117,7 @@ public sealed class ListModuleTemplatesCommand
     {
         var scaffolder = new ModuleScaffolder(StellarInstallation.Locate(), ConsoleToolLogger.Instance);
 
-        foreach (var template in scaffolder.ListTemplates())
+        foreach (string template in scaffolder.ListTemplates())
             AnsiConsole.MarkupLineInterpolated(
                 $"- {template} [grey]{scaffolder.DescribeTemplate(template) ?? string.Empty}[/]");
 
@@ -139,16 +142,16 @@ public sealed class AddModuleCommand
 {
     public override int Execute(CommandContext context, AddModuleSettings settings)
     {
-        var directory = Path.GetFullPath(settings.Directory);
-        var file = ModuleDescriptorFile.Find(directory)
-                   ?? throw new ToolException($"{directory} is not a module: it has no .stellar.module file");
-        var descriptor = ModuleDescriptorFile.Read(file);
-        var installation = StellarInstallation.Locate();
+        string directory = Path.GetFullPath(settings.Directory);
+        string file = ModuleDescriptorFile.Find(directory)
+                      ?? throw new ToolException($"{directory} is not a module: it has no .stellar.module file");
+        ModuleDescriptor descriptor = ModuleDescriptorFile.Read(file);
+        StellarInstallation installation = StellarInstallation.Locate();
 
         ModuleFeed.EnsureReachable(installation, directory, ConsoleToolLogger.Instance);
         ManifestChanges.Apply(installation, manifest =>
         {
-            var entry = EngineManifestEditor.Entry(manifest, descriptor.Id);
+            ModuleOverride entry = EngineManifestEditor.Entry(manifest, descriptor.Id);
             entry.Path = directory;
             entry.Link = settings.Link ?? entry.Link;
         });
@@ -239,28 +242,26 @@ public sealed class BuildModulesCommand
 {
     public override int Execute(CommandContext context, BuildModulesSettings settings)
     {
-        var installation = StellarInstallation.Locate();
-        var set = ModuleSynchronizer.Synchronize(installation, ConsoleToolLogger.Instance);
+        StellarInstallation installation = StellarInstallation.Locate();
+        ModuleSet set = ModuleSynchronizer.Synchronize(installation, ConsoleToolLogger.Instance);
         var options = new ModuleBuildOptions(settings.Configuration, !settings.NoNative, true, settings.Tests,
             settings.Pack, settings.Wrapper);
-        var steps = ModuleBuildPlanner.Plan(installation, set, settings.Ids, options,
+        IReadOnlyList<BuildStep> steps = ModuleBuildPlanner.Plan(installation, set, settings.Ids, options,
             settings.NoNative ? null : MSBuildLocator.Find());
 
         if (settings.Plan)
         {
-            foreach (var step in steps)
+            foreach (BuildStep step in steps)
                 AnsiConsole.MarkupLineInterpolated(
                     $"{step.Module}: [grey]{step.FileName} {string.Join(" ", step.Arguments)}[/]");
 
             return 0;
         }
 
-        new ModuleBuilder(new ProcessRunner(ConsoleToolLogger.Instance), ConsoleToolLogger.Instance).Run(steps,
-            installation.Root);
-
-        // Packed again under the same versions: the games must not keep the copies NuGet unpacked before
-        if (settings.Pack)
-            Stellar.Tools.Installation.PackageCache.RefreshStale(installation.Packages, null, ConsoleToolLogger.Instance);
+        new ModuleBuilder(new ProcessRunner(ConsoleToolLogger.Instance), ConsoleToolLogger.Instance,
+                () => Tools.Installation.PackageCache.RefreshStale(installation.Packages, null,
+                    ConsoleToolLogger.Instance))
+            .Run(steps, installation.Root);
         return 0;
     }
 }
@@ -270,11 +271,13 @@ public sealed class BuildModulesCommand
 /// </summary>
 internal static class ManifestChanges
 {
-    public static void Apply(StellarInstallation installation,
-        Action<Kernel.Configuration.Manifest.EngineManifest> change)
+    public static void Apply(
+        StellarInstallation installation,
+        Action<Kernel.Configuration.Manifest.EngineManifest> change
+    )
     {
-        var original = File.ReadAllText(installation.EngineManifest);
-        var manifest = EngineManifestStore.Load(installation.EngineManifest);
+        string original = File.ReadAllText(installation.EngineManifest);
+        EngineManifest manifest = EngineManifestStore.Load(installation.EngineManifest);
 
         change(manifest);
         EngineManifestEditor.Compact(manifest);

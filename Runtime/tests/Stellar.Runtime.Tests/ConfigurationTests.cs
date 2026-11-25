@@ -17,7 +17,8 @@ public class ConfigurationTests
     [Fact]
     public void AssemblyFile_ReadsTheAttribute_WithoutLoadingTheAssembly()
     {
-        var attribute = AssemblyFile.ReadConfigurationAttribute(Fixture("Stellar.Runtime.Tests.Application"));
+        StellarRuntimeConfigurationAttribute? attribute =
+            AssemblyFile.ReadConfigurationAttribute(Fixture("Stellar.Runtime.Tests.Application"));
 
         attribute.Should().NotBeNull();
         attribute!.Source.Should().Be(RuntimeConfigurationSource.External);
@@ -36,7 +37,8 @@ public class ConfigurationTests
     [Fact]
     public void Locator_ReadsAFileNextToTheAssembly()
     {
-        var configuration = new RuntimeConfigurationLocator().Read(Fixture("Stellar.Runtime.Tests.Application"));
+        RuntimeConfiguration configuration =
+            new RuntimeConfigurationLocator().Read(Fixture("Stellar.Runtime.Tests.Application"));
 
         configuration.EntryPoint.Should().Be("Stellar.Runtime.Tests.Application.Game");
         configuration.Components.OfType<ModulesComponent>().Single().Modules
@@ -46,7 +48,8 @@ public class ConfigurationTests
     [Fact]
     public void Locator_ReadsAnEmbeddedResource()
     {
-        var configuration = new RuntimeConfigurationLocator().Read(Fixture("Stellar.Runtime.Tests.Host"));
+        RuntimeConfiguration configuration =
+            new RuntimeConfigurationLocator().Read(Fixture("Stellar.Runtime.Tests.Host"));
 
         configuration.ProjectName.Should().Be("Host");
         configuration.Settings["MaxFrames"].Should().Be("7");
@@ -56,12 +59,26 @@ public class ConfigurationTests
     public void Locator_MissingFile_SaysWhere()
     {
         using var directory = new TempFolder();
-        var copy = Path.Combine(directory.Path, "Stellar.Runtime.Tests.Application.dll");
+        string copy = Path.Combine(directory.Path, "Stellar.Runtime.Tests.Application.dll");
         File.Copy(Fixture("Stellar.Runtime.Tests.Application"), copy);
 
-        var action = () => new RuntimeConfigurationLocator().Read(copy);
+        Func<RuntimeConfiguration> action = () => new RuntimeConfigurationLocator().Read(copy);
 
         action.Should().Throw<RuntimeConfigurationException>().WithMessage("*missing*stellar.runtime.config.json*");
+    }
+
+    [Fact]
+    public void Settings_ReachTheModules_WithTheCommandLine()
+    {
+        var configuration = new RuntimeConfiguration { Settings = { ["LogPath"] = "a.log", ["Custom"] = "x" } };
+
+        Dictionary<string, string> settings = RuntimeSettings
+            .Create(configuration, ["--stellar:logpath=b.log", "--stellar:New=1"]).ToDictionary();
+
+        settings.Should().HaveCount(3);
+        settings["LogPath"].Should().Be("b.log");
+        settings["CUSTOM"].Should().Be("x");
+        settings["New"].Should().Be("1");
     }
 
     [Fact]
@@ -104,7 +121,7 @@ public class ConfigurationTests
     [Fact]
     public void Plan_WithoutModules_AsksForARebuild()
     {
-        var action = () => ModulePlan.From(new RuntimeConfiguration { ProjectName = "Old" });
+        Func<ModulePlan> action = () => ModulePlan.From(new RuntimeConfiguration { ProjectName = "Old" });
 
         action.Should().Throw<ModuleLoadException>().WithMessage("*rebuild*");
     }

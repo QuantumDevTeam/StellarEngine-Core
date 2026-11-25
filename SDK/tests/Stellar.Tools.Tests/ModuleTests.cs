@@ -22,16 +22,18 @@ internal static class FakeCore
 
     public static StellarInstallation Installed(TempDirectory directory, EngineManifest? manifest = null)
     {
-        var installation = Create(directory);
+        StellarInstallation installation = Create(directory);
         EngineManifestStore.Save(installation.EngineManifest,
             manifest ?? new EngineManifest { OrchesterVersion = "0.7.0" });
         return installation;
     }
 
-    public static string Module(TempDirectory directory, string folder, string id, string json = "",
-        bool withProject = true)
+    public static string Module(
+        TempDirectory directory, string folder, string id, string json = "",
+        bool withProject = true
+    )
     {
-        var body = json.Length == 0 ? string.Empty : ", " + json;
+        string body = json.Length == 0 ? string.Empty : ", " + json;
         directory.Write($"{folder}/{id}.stellar.module", $$"""{ "Id": "{{id}}"{{body}} }""");
 
         if (withProject)
@@ -47,7 +49,7 @@ public class ModuleDiscoveryTests
     public void Discover_FindsModulesUpToTheDepth_AndNotInsideModules()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
 
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A");
         FakeCore.Module(directory, "modules/Group/Stellar.B", "Stellar.B");
@@ -55,7 +57,8 @@ public class ModuleDiscoveryTests
         FakeCore.Module(directory, "modules/One/Two/Stellar.D", "Stellar.D");
         FakeCore.Module(directory, "modules/.hidden/Stellar.E", "Stellar.E");
 
-        var found = ModuleDiscovery.Discover(installation, new ModuleDiscoverySettings()).Select(Path.GetFileName);
+        IEnumerable<string?> found = ModuleDiscovery.Discover(installation, new ModuleDiscoverySettings())
+            .Select(Path.GetFileName);
 
         found.Should().BeEquivalentTo(["Stellar.A.stellar.module", "Stellar.B.stellar.module"]);
     }
@@ -64,7 +67,7 @@ public class ModuleDiscoveryTests
     public void Discover_CanBeSwitchedOff()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A");
 
         ModuleDiscovery.Discover(installation, new ModuleDiscoverySettings { Enabled = false }).Should().BeEmpty();
@@ -74,9 +77,9 @@ public class ModuleDiscoveryTests
     public void Descriptor_MustBeNamedAfterItsModule()
     {
         using var directory = new TempDirectory();
-        var path = directory.Write("Stellar.A.stellar.module", """{ "Id": "Stellar.B" }""");
+        string path = directory.Write("Stellar.A.stellar.module", """{ "Id": "Stellar.B" }""");
 
-        var action = () => ModuleDescriptorFile.Read(path);
+        Func<ModuleDescriptor> action = () => ModuleDescriptorFile.Read(path);
 
         action.Should().Throw<ToolException>().WithMessage("*Stellar.B.stellar.module*");
     }
@@ -105,10 +108,11 @@ public class ModuleResolverTests
     public void Resolve_FillsTheDefaults()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A");
 
-        var module = ModuleResolver.Resolve(installation, new EngineManifest()).Modules.Should().ContainSingle()
+        ResolvedModule module = ModuleResolver.Resolve(installation, new EngineManifest()).Modules.Should()
+            .ContainSingle()
             .Subject;
 
         module.Source.Should().Be(ModuleSource.Discovered);
@@ -121,7 +125,7 @@ public class ModuleResolverTests
     public void Resolve_TheManifestWinsOverTheDescriptor()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A", """ "Version": "1.0.0", "Level": "CoreModule" """);
 
         var manifest = new EngineManifest
@@ -129,7 +133,7 @@ public class ModuleResolverTests
             Modules = [new ModuleOverride { Id = "Stellar.A", Version = "2.0.0", Link = ModuleLink.Package }]
         };
 
-        var module = ModuleResolver.Resolve(installation, manifest).Modules.Single();
+        ResolvedModule module = ModuleResolver.Resolve(installation, manifest).Modules.Single();
 
         module.Descriptor.Version.Should().Be("2.0.0");
         module.Descriptor.Level.Should().Be(ModuleLevel.CoreModule);
@@ -140,13 +144,13 @@ public class ModuleResolverTests
     public void Resolve_AFolderOfTheManifestWinsOverADiscoveredOne()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A");
-        var external = FakeCore.Module(directory, "work/Stellar.A", "Stellar.A");
+        string external = FakeCore.Module(directory, "work/Stellar.A", "Stellar.A");
 
         var manifest = new EngineManifest { Modules = [new ModuleOverride { Id = "Stellar.A", Path = external }] };
 
-        var module = ModuleResolver.Resolve(installation, manifest).Modules.Single();
+        ResolvedModule module = ModuleResolver.Resolve(installation, manifest).Modules.Single();
 
         module.Source.Should().Be(ModuleSource.External);
         module.Directory.Should().Be(Path.GetFullPath(external));
@@ -156,13 +160,13 @@ public class ModuleResolverTests
     public void Resolve_DisabledModules_AndWhoDependsOnThem()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A", """ "Level": "CoreModule" """);
         FakeCore.Module(directory, "modules/Stellar.B", "Stellar.B", """ "Dependencies": ["Stellar.A"] """);
 
         var manifest = new EngineManifest { Modules = [new ModuleOverride { Id = "Stellar.A", Enabled = false }] };
 
-        var resolution = ModuleResolver.Resolve(installation, manifest);
+        ModuleResolution resolution = ModuleResolver.Resolve(installation, manifest);
 
         resolution.Disabled.Should().Equal("Stellar.A");
         resolution.Errors.Should().ContainSingle().Which.Should().Contain("turned off");
@@ -172,11 +176,11 @@ public class ModuleResolverTests
     public void Resolve_APackageOnlyModuleNeedsAVersion()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
 
-        var withoutVersion = ModuleResolver.Resolve(installation,
+        ModuleResolution withoutVersion = ModuleResolver.Resolve(installation,
             new EngineManifest { Modules = [new ModuleOverride { Id = "Stellar.P" }] });
-        var withVersion = ModuleResolver.Resolve(installation,
+        ModuleResolution withVersion = ModuleResolver.Resolve(installation,
             new EngineManifest { Modules = [new ModuleOverride { Id = "Stellar.P", Version = "1.0.0" }] });
 
         withoutVersion.Errors.Should().ContainSingle().Which.Should().Contain("Version");
@@ -188,12 +192,12 @@ public class ModuleResolverTests
     public void Resolve_RejectsDuplicatesAndTheCore()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/One/Stellar.A", "Stellar.A");
         FakeCore.Module(directory, "modules/Two/Stellar.A", "Stellar.A");
         FakeCore.Module(directory, "modules/Stellar.Core", "Stellar.Core");
 
-        var errors = ModuleResolver.Resolve(installation, new EngineManifest()).Errors;
+        IReadOnlyList<string> errors = ModuleResolver.Resolve(installation, new EngineManifest()).Errors;
 
         errors.Should().Contain(error => error.Contains("found twice")).And
             .Contain(error => error.Contains("part of the core"));
@@ -203,10 +207,10 @@ public class ModuleResolverTests
     public void Resolve_ImplicitDependenciesAreDropped()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A", """ "Dependencies": ["Stellar.Core"] """);
 
-        var resolution = ModuleResolver.Resolve(installation, new EngineManifest());
+        ModuleResolution resolution = ModuleResolver.Resolve(installation, new EngineManifest());
 
         resolution.Modules.Single().Descriptor.Dependencies.Should().BeEmpty();
         resolution.Warnings.Should().ContainSingle().Which.Should().Contain("implicit");
@@ -219,13 +223,13 @@ public class ModuleSynchronizerTests
     public void Synchronize_WritesTheCatalog_ThatTellsAModuleWhoItIs()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Installed(directory);
+        StellarInstallation installation = FakeCore.Installed(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A", """ "Level": "CoreModule", "Version": "1.2.3" """);
         FakeCore.Module(directory, "modules/Stellar.B", "Stellar.B",
             """ "Dependencies": ["Stellar.A"], "Description": "B & co" """);
 
-        var set = ModuleSynchronizer.Synchronize(installation, NullToolLogger.Instance);
-        var catalog = File.ReadAllText(installation.ModuleCatalog);
+        ModuleSet set = ModuleSynchronizer.Synchronize(installation, NullToolLogger.Instance);
+        string catalog = File.ReadAllText(installation.ModuleCatalog);
 
         set.LoadOrder.Select(module => module.Id).Should().Equal("Stellar.A", "Stellar.B");
         catalog.Should()
@@ -244,12 +248,12 @@ public class ModuleSynchronizerTests
     public void Synchronize_RefusesALevelViolation_AndWritesNothing()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Installed(directory);
+        StellarInstallation installation = FakeCore.Installed(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A",
             """ "Level": "CoreModule", "Dependencies": ["Stellar.B"] """);
         FakeCore.Module(directory, "modules/Stellar.B", "Stellar.B");
 
-        var action = () => ModuleSynchronizer.Synchronize(installation, NullToolLogger.Instance);
+        Func<ModuleSet> action = () => ModuleSynchronizer.Synchronize(installation, NullToolLogger.Instance);
 
         action.Should().Throw<ToolException>().WithMessage("*must not depend on*");
         File.Exists(installation.ModuleCatalog).Should().BeFalse();
@@ -262,13 +266,13 @@ public class ModuleScaffolderTests
     public void Create_RendersTheTemplateIntoModules()
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Installed(directory);
+        StellarInstallation installation = FakeCore.Installed(directory);
         directory.Write("Shared/Templates/Modules/Managed/__ModuleId__.stellar.module",
             """{ "Id": "{{ModuleId}}", "Level": "{{ModuleLevel}}" }""");
         directory.Write("Shared/Templates/Modules/Managed/src/Native/__ModuleNativeId__/__ModuleNativeId__.vcxproj",
             "{{ModuleNativeGuid}}");
 
-        var created = new ModuleScaffolder(installation, NullToolLogger.Instance)
+        string created = new ModuleScaffolder(installation, NullToolLogger.Instance)
             .Create(new ModuleRequest("Stellar.Sample", ModuleLevel.CoreModule, null, "Managed"));
 
         created.Should().Be(Path.Combine(installation.Modules, "Stellar.Sample"));
@@ -286,10 +290,10 @@ public class ModuleScaffolderTests
     public void Create_RejectsBadIdentifiers(string id)
     {
         using var directory = new TempDirectory();
-        var installation = FakeCore.Installed(directory);
+        StellarInstallation installation = FakeCore.Installed(directory);
         directory.Write("Shared/Templates/Modules/Managed/x.txt", "x");
 
-        var action = () => new ModuleScaffolder(installation, NullToolLogger.Instance)
+        Func<string> action = () => new ModuleScaffolder(installation, NullToolLogger.Instance)
             .Create(new ModuleRequest(id, ModuleLevel.HighLevel, null, "Managed"));
 
         action.Should().Throw<ToolException>();
@@ -300,7 +304,7 @@ public class ModuleBuildPlannerTests
 {
     private static (StellarInstallation Installation, ModuleSet Set) Installation(TempDirectory directory)
     {
-        var installation = FakeCore.Installed(directory);
+        StellarInstallation installation = FakeCore.Installed(directory);
         FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A", """ "Level": "CoreModule" """);
         directory.Write("modules/Stellar.A/src/Native/Stellar.Native.A/Stellar.Native.A.vcxproj", "<Project/>");
         FakeCore.Module(directory, "modules/Stellar.B", "Stellar.B", """ "Dependencies": ["Stellar.A"] """);
@@ -313,9 +317,10 @@ public class ModuleBuildPlannerTests
     public void Plan_BuildsTheDependenciesFirst_NativeBeforeManaged()
     {
         using var directory = new TempDirectory();
-        var (installation, set) = Installation(directory);
+        (StellarInstallation installation, ModuleSet set) = Installation(directory);
 
-        var steps = ModuleBuildPlanner.Plan(installation, set, ["Stellar.B"], new ModuleBuildOptions(Pack: true),
+        IReadOnlyList<BuildStep> steps = ModuleBuildPlanner.Plan(installation, set, ["Stellar.B"],
+            new ModuleBuildOptions(Pack: true),
             "msbuild.exe");
 
         steps.Select(step => $"{step.Module}: {step.Description}").Should().Equal(
@@ -329,13 +334,49 @@ public class ModuleBuildPlannerTests
     }
 
     [Fact]
+    public void Plan_PacksBeforeTheTests_WhichTakeThePackageOutsideDebug()
+    {
+        using var directory = new TempDirectory();
+        StellarInstallation installation = FakeCore.Installed(directory);
+        FakeCore.Module(directory, "modules/Stellar.A", "Stellar.A");
+        directory.Write("modules/Stellar.A/tests/Stellar.A.Tests/Stellar.A.Tests.csproj", "<Project/>");
+        ModuleSet set = ModuleSynchronizer.Synchronize(installation, NullToolLogger.Instance);
+
+        IReadOnlyList<BuildStep> steps = ModuleBuildPlanner.Plan(installation, set, [],
+            new ModuleBuildOptions(Tests: true, Pack: true), null);
+
+        steps.Select(step => step.Description).Should()
+            .Equal("build Stellar.A", "pack Stellar.A", "test Stellar.A.Tests");
+        steps.Select(step => step.IsPack).Should().Equal(false, true, false);
+    }
+
+    [Fact]
+    public void Builder_TellsAboutAPackageBeforeTheNextStep()
+    {
+        var runner = new RecordingRunner(-1);
+        int callsWhenPacked = 0;
+        BuildStep[] steps = new[]
+        {
+            new BuildStep("A", "pack", "dotnet", ["pack"], true),
+            new BuildStep("A", "test", "dotnet", ["test"])
+        };
+
+        new ModuleBuilder(runner, NullToolLogger.Instance, () => callsWhenPacked = runner.Calls).Run(steps, ".");
+
+        callsWhenPacked.Should().Be(1);
+        runner.Calls.Should().Be(2);
+    }
+
+    [Fact]
     public void Plan_NeedsMSBuildForNativeProjects_UnlessTheyAreSkipped()
     {
         using var directory = new TempDirectory();
-        var (installation, set) = Installation(directory);
+        (StellarInstallation installation, ModuleSet set) = Installation(directory);
 
-        var withNative = () => ModuleBuildPlanner.Plan(installation, set, [], new ModuleBuildOptions(), null);
-        var withoutNative = ModuleBuildPlanner.Plan(installation, set, [], new ModuleBuildOptions(Native: false), null);
+        Func<IReadOnlyList<BuildStep>> withNative = () =>
+            ModuleBuildPlanner.Plan(installation, set, [], new ModuleBuildOptions(), null);
+        IReadOnlyList<BuildStep> withoutNative =
+            ModuleBuildPlanner.Plan(installation, set, [], new ModuleBuildOptions(Native: false), null);
 
         withNative.Should().Throw<ToolException>().WithMessage("*--no-native*");
         withoutNative.Should().HaveCount(3);
@@ -345,14 +386,14 @@ public class ModuleBuildPlannerTests
     public void Builder_StopsAtTheFirstFailure()
     {
         var runner = new RecordingRunner(1);
-        var steps = new[]
+        BuildStep[] steps = new[]
         {
             new BuildStep("A", "one", "dotnet", ["build"]),
             new BuildStep("A", "two", "dotnet", ["build"]),
             new BuildStep("B", "three", "dotnet", ["build"])
         };
 
-        var action = () => new ModuleBuilder(runner, NullToolLogger.Instance).Run(steps, ".");
+        Action action = () => new ModuleBuilder(runner, NullToolLogger.Instance).Run(steps, ".");
 
         action.Should().Throw<ToolException>().WithMessage("*two*");
         runner.Calls.Should().Be(2);

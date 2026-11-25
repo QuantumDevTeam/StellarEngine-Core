@@ -12,6 +12,8 @@
   href: Repository.md
 - name: Setting up the machine
   href: PostInstallSetup.md
+- name: Marks
+  href: Marks.md
 - name: Project
   items:
     - name: README

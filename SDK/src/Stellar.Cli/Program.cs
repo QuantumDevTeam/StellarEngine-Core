@@ -1,10 +1,11 @@
 ﻿using Spectre.Console;
 using Spectre.Console.Cli;
+
+using Stellar.Tools.Diagnostics;
 using Stellar.Cli.Commands;
 using Stellar.Cli.Commands.Modules;
 using Stellar.Cli.Commands.Project;
 using Stellar.Cli.Commands.Resources;
-using Stellar.Tools.Diagnostics;
 
 var app = new CommandApp();
 
@@ -70,6 +71,23 @@ app.Configure(config =>
         modules.AddCommand<BuildModulesCommand>("build")
             .WithDescription("Build modules with their dependencies: native, managed, tests, packages");
     }).WithAlias("module");
+
+    config.AddBranch("marks", marks =>
+    {
+        marks.SetDescription("The marks in the comments of the code");
+
+        marks.AddCommand<CheckMarksCommand>("check")
+            .WithDescription("Fail if a mark stops a commit or a release");
+
+        marks.AddCommand<ListMarksCommand>("list")
+            .WithDescription("Show the marks and what they mean");
+
+        marks.AddCommand<InstallMarksCommand>("install")
+            .WithDescription("Make git check the marks of every commit, merge and push");
+
+        marks.AddCommand<UninstallMarksCommand>("uninstall")
+            .WithDescription("Take the checks out of git");
+    }).WithAlias("mark");
 
     config.AddBranch("project", project =>
     {

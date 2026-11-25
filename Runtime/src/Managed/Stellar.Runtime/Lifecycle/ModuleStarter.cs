@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+
 using Stellar.Kernel.Configuration;
 using Stellar.Kernel.EntryPoint;
 using Stellar.Kernel.FailureSystem;
@@ -36,7 +37,8 @@ public static class ModuleStarter
 
         if (module.EntryPointType is null) return;
 
-        var entryPoint = Create(module.EntryPointType, context.Configuration ?? new RuntimeConfiguration());
+        StellarEntryPoint entryPoint =
+            Create(module.EntryPointType, context.Configuration ?? new RuntimeConfiguration());
         module.EntryPoint = entryPoint;
 
         if (entryPoint is IServiceHost host && context.Services is null)
@@ -45,11 +47,11 @@ public static class ModuleStarter
             RuntimeServices.Publish(context, host.Services);
         }
 
-        var services = context.Services;
+        IServiceCatalog? services = context.Services;
         var runContext = new RuntimeRunContext(context, services?.Find<ILogger>(),
             services?.Find<IFailureSystem>(), services, context.Engine);
 
-        var code = entryPoint.Run(in runContext);
+        int code = entryPoint.Run(in runContext);
 
         // The module that owns the services may have brought a logger
         context.Log.Logger ??= context.Services?.Find<ILogger>();
@@ -77,7 +79,7 @@ public static class ModuleStarter
         {
             context.MainLoop?.Remove(entryPoint);
 
-            var reason = context.Control.IsStopRequested ? context.Control.StopReason : StopReason.Regular;
+            StopReason reason = context.Control.IsStopRequested ? context.Control.StopReason : StopReason.Regular;
 
             context.Catchers.Engine.Guard(() =>
                 {
@@ -85,16 +87,18 @@ public static class ModuleStarter
                     entryPoint.RequestStop(in stopContext);
                 }, $"the stop of {module.Id}", FailureKind.Module, context);
 
-            context.Catchers.Engine.Guard(entryPoint.Dispose, $"the disposal of {module.Id}", FailureKind.Module, context);
+            context.Catchers.Engine.Guard(entryPoint.Dispose, $"the disposal of {module.Id}", FailureKind.Module,
+                context);
 
             if (entryPoint is IServiceHost host && ReferenceEquals(host.Services, context.Services))
             {
                 RuntimeServices.Withdraw(host.Services);
                 context.Services = null;
-                context.Log.Logger = null;
             }
 
             module.EntryPoint = null;
+
+            context.Log.Logger = context.Services?.Find<ILogger>();
         }
 
         context.MarkStopped(module);
@@ -112,6 +116,7 @@ public static class ModuleStarter
 
     private static bool TakesPartInFrames(StellarEntryPoint entryPoint)
     {
+        // ReSharper disable once SuspiciousTypeConversion.Global
         return entryPoint is IUpdatable or IFixedUpdatable or IRenderable;
     }
 

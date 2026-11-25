@@ -1,0 +1,7 @@
+{
+  "Marks": {
+    "MVP": { "Level": "Info", "Description": "The minimum that works is reached here" },
+    "WIP": { "Level": "Release", "Description": "Not finished: it cannot be released" },
+    "DRAFT": { "Level": "Commit", "Description": "A trial of one machine: it cannot be committed" }
+  }
+}
