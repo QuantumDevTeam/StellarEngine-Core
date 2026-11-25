@@ -39,7 +39,7 @@ stellar marks uninstall --all
 | Where | What it checks |
 |---|---|
 | the hooks of git | what is committed, merged and pushed |
-| `.github/workflows/marks.yml` | every push and pull request of the core; `master` as a release |
+| `.github/workflows/marks.yml` | every push to `develop` and `master` and every pull request; `master` as a release. A module calls the workflow of the core, `stellar modules new` writes it. Required by the rulesets |
 | `.github/workflows/release.yml` | before a release is tagged |
 | `.github/workflows/mirror.yml` | the core and every component, before a snapshot |
 

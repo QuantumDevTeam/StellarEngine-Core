@@ -2,11 +2,15 @@ name: Marks
 
 # Marks in the comments of the code (Docs/Engine/Marks.md): one that stops a commit, or that nobody knows, does not
 # get in. The hooks of git check the same on a machine; they can be skipped, this cannot.
+#
+# One workflow for every repository: the core runs it as it is, a module calls it. The kinds of marks and the command
+# are those of the core, so a module is checked out into modules/ of a checkout of the core.
 
 on:
   push:
     branches: [develop, master]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -16,9 +20,25 @@ jobs:
     name: Marks
     if: vars.STELLAR_MIRROR != 'true'
     runs-on: ubuntu-latest
+    env:
+      IS_CORE: ${{ github.event.repository.name == 'StellarEngine-Core' }}
     steps:
       - name: Checkout
+        if: env.IS_CORE == 'true'
         uses: actions/checkout@v5
+
+      - name: Checkout the core
+        if: env.IS_CORE != 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: QuantumDevTeam/StellarEngine-Core
+          ref: develop
+
+      - name: Checkout the module
+        if: env.IS_CORE != 'true'
+        uses: actions/checkout@v5
+        with:
+          path: modules/${{ github.event.repository.name }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -29,6 +49,7 @@ jobs:
       - name: Check the marks
         env:
           STAGE: ${{ (github.base_ref == 'master' || github.ref == 'refs/heads/master') && 'release' || 'commit' }}
+          TARGET: ${{ github.event.repository.name == 'StellarEngine-Core' && '.' || format('modules/{0}', github.event.repository.name) }}
         run: |
           mkdir -p packages
-          dotnet run --project SDK/src/Stellar.Cli/Stellar.Cli.csproj -- marks check --stage "$STAGE"
+          dotnet run --project SDK/src/Stellar.Cli/Stellar.Cli.csproj -- marks check "$TARGET" --stage "$STAGE"
