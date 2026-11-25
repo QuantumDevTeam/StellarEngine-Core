@@ -112,6 +112,31 @@ After `v1.0.0`:
 
 ---
 
+## 8. Versions of Components
+
+Every component (`Shared/Build/Stellar.Versions.props`, `*.stellar.module`) has a version of its own. What counts is the
+version of the last release, the one on `master`:
+
+| Since the last release | Version |
+|---|---|
+| nothing that matters to others: formatting, tests, documentation | stays |
+| the first compatible change | `Y` is raised, once: `0.10.0` → `0.10.1` |
+| more compatible changes | stays: they go into the version that is raised already |
+| a breaking change | `X` is raised, once, instead of `Y`: `0.10.1` → `0.11.0` |
+| more changes of any kind after it | stays |
+
+A change is breaking for a component when what uses it does not work with the new one as it is. A component that did not
+change is raised only if it does not work with the old version of what it depends on. The orchestra takes `X` when any of
+its components does, or when a module enters it.
+
+Before raising, compare:
+
+```powershell
+git show origin/master:Shared/Build/Stellar.Versions.props
+```
+
+---
+
 Also see:
 - [GitPolicy.md](GitPolicy.md)
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)

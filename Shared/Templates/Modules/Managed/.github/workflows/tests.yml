@@ -1,11 +1,14 @@
 name: Tests
 
 # The module built and tested on the core, by the workflow of the core.
+# By itself only on the way into master; on any other branch by hand (Run workflow).
 
 on:
+  workflow_dispatch:
   push:
-    branches: [develop, master]
+    branches: [master]
   pull_request:
+    branches: [master]
 
 permissions:
   contents: read

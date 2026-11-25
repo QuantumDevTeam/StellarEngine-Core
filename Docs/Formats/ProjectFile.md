@@ -40,7 +40,7 @@ and `.idea` are never searched.
 | `Assets.Include` | Files copied to the output as they are |
 | `Assets.Embedded` | Files embedded into the assembly. They win over `Include` |
 | `Assets.Exclude` | Files removed from both lists |
-| `Resources.Include` | Files compiled into `.sres` containers, in `resources/` of the output |
+| `Resources.Include` | Files compiled into `.sres` containers, in `Resources/` of the output |
 | `Resources.Compilers` | Assemblies with additional resource compilers |
 | `Localizations.IndexFiles` | Index files. The culture is the file name before `.stellar.loc.index` |
 | `Runtime` | The settings of the runtime ([Runtime](../Architecture/Runtime.md#settings)), and free-form values for modules. They reach `RuntimeConfiguration.Settings`: strings as they are, other values as JSON text |

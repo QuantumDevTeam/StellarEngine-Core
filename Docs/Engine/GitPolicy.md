@@ -101,6 +101,16 @@ git switch develop
 git pull --ff-only
 ```
 
+A pull request into `develop` waits for the marks and the CLA, not for the tests: they run by themselves only for
+`master`. Test on your machine (`scripts/build.ps1`, `stellar modules build <module> --tests`), and to test a branch on
+the server start it by hand, for example after several merges into `develop`: *Actions → Tests → Run workflow*, or
+
+```powershell
+gh workflow run tests.yml --ref develop
+```
+
+The button appears once the workflow is in `master`.
+
 More commits on the same task before the merge: `git commit` and `git push`, the pull request takes them by itself.
 
 Always a **merge commit**, never a squash or a rebase: those make other commits out of the same changes, and `develop`
