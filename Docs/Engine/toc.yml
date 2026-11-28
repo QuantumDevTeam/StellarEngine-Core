@@ -1,4 +1,4 @@
-# Navigation of the guide of the whole engine, on the site of the engine (scripts/orchestra-site.ps1).
+# Navigation of the guide of the whole engine, in the documentation of the engine (scripts/prometheus.ps1).
 # The pages live in the core, the only place they can, and are published with the orchestra, not with the core.
 - name: Installing
   href: Install.md
@@ -14,15 +14,19 @@
   href: PostInstallSetup.md
 - name: Marks
   href: Marks.md
+- name: Writing the documentation
+  href: Documentation.md
+- name: Questions
+  href: FAQ.md
 - name: Project
   items:
     - name: README
-      href: ../../README.md
+      href: https://github.com/QuantumDevTeam/StellarEngine-Core#readme
     - name: Contributing
-      href: ../../CONTRIBUTING.md
+      href: https://github.com/QuantumDevTeam/StellarEngine-Core/blob/master/CONTRIBUTING.md
     - name: Git policy
       href: GitPolicy.md
     - name: Versioning
       href: Versioning.md
     - name: License
-      href: ../../LICENSE.md
+      href: https://github.com/QuantumDevTeam/StellarEngine-Core/blob/master/LICENSE.md

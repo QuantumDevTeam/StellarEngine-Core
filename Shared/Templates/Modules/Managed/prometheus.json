@@ -1,0 +1,15 @@
+{
+  "format": "prometheus-repo/1",
+  "project": "{{ModuleDocsProject}}",
+  "title": "{{ModuleId}}",
+  "version": {
+    "file": "{{ModuleId}}.stellar.module",
+    "regex": "\"Version\"\\s*:\\s*\"([^\"]+)\""
+  },
+  "docs": [
+    {
+      "path": "Docs"
+    }
+  ],
+  "static": "docfx.json"
+}

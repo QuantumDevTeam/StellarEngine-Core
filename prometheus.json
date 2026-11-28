@@ -1,0 +1,4 @@
+{
+  "format": "prometheus-repo/1",
+  "prepare": "scripts/prometheus.ps1"
+}

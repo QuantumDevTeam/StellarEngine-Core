@@ -1,6 +1,6 @@
 # StellarEngine — Versioning Policy
 
-- [README.md](../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 ## 1. General Concept
 
@@ -139,5 +139,5 @@ git show origin/master:Shared/Build/Stellar.Versions.props
 
 Also see:
 - [GitPolicy.md](GitPolicy.md)
-- [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [README.md](../../README.md)
+- [CONTRIBUTING.md](https://github.com/QuantumDevTeam/StellarEngine-Core/blob/master/CONTRIBUTING.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)

@@ -1,6 +1,6 @@
 # Marks
 
-- [README.md](../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 A mark is metadata in a comment of the code: `#` and a name in angle brackets, capital letters, digits, `-` and `_`.
 `MVP` as a mark in C# is a comment `// #` followed by `<MVP>`. It is found in comments only, in C#, C++, shaders,

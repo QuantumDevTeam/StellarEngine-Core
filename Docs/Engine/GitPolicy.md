@@ -1,6 +1,6 @@
 # StellarEngine — Git & Collaboration Policy
 
-- [README.md](../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 ## 1. Purpose of This Document
 
@@ -209,5 +209,5 @@ Each contributor:
 
 Also see:
 - [Versioning.md](Versioning.md)
-- [CONTRIBUTING.md](../../CONTRIBUTING.md)
-- [README.md](../../README.md)
+- [CONTRIBUTING.md](https://github.com/QuantumDevTeam/StellarEngine-Core/blob/master/CONTRIBUTING.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)

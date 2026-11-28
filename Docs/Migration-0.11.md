@@ -23,6 +23,15 @@ Stellar.Sdk, so change `0.4.1` to `0.4.2` in that of every solution:
 { "msbuild-sdks": { "Stellar.Sdk": "0.4.2" } }
 ```
 
+## Installing
+
+`scripts/build.ps1 -Install` also builds and packs the modules of `modules/` after the core, with their tests unless
+`-SkipTests`: a game built against packages finds them in `packages/` without `stellar modules build --pack` by hand.
+`-SkipModules` turns it off.
+
+`stellar install` keeps one registration per root in `~/.stellar`: an installation updated to 0.11 replaces the
+entry of its old orchestra version instead of keeping both.
+
 ## Resources
 
 Compiled resources lie in `Resources` next to the application, not `resources`: only a system that tells case apart sees
@@ -60,4 +69,4 @@ told there instead of being lost.
 
 ## Marks
 
-Marks in the comments of the code, checked by git and by the workflows: [Marks](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Marks.html).
+Marks in the comments of the code, checked by git and by the workflows: [Marks](Engine/Marks.md).

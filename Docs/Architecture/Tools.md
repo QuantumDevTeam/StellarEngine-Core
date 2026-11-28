@@ -83,7 +83,7 @@ Later additions win, and anything no compiler claims is packed as is by `RawReso
 | `stellar uninstall [path]` | Remove an installation: unregister it, drop its packages from the NuGet cache, remove what the installer made; `--all`, `--artifacts`, `--dry-run` |
 | `stellar modules list` | Show the manifest in load order |
 | `stellar modules sync` | Find the modules, apply the manifest, check the rules, regenerate the catalog |
-| `stellar modules new`, `templates`, `add`, `enable`, `disable`, `reset`, `build` | See [Modules](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Modules.html) |
+| `stellar modules new`, `templates`, `add`, `enable`, `disable`, `reset`, `build` | See [Modules](../Engine/Modules.md) |
 | `stellar solution sync [directory]` | Write the `.sln` again: the projects of the solution, the engine when `"Engine"` is `Sources` |
 | `stellar run [target]` | Build and run a game or a tool of the solution, or several at once; see [`.stellar.solution`](../Formats/SolutionFile.md) |
 | `stellar project new <template> <name>` | Create a solution and its project in a folder of its own; `--flat` for the project alone |

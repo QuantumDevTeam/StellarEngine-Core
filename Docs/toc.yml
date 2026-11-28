@@ -1,5 +1,5 @@
-# Navigation of the site of the core (DocFX). Paths are relative to this file.
-# Docs/Engine/ is not here: it is the guide of the whole engine, on the site of the engine (scripts/orchestra-site.ps1).
+# Navigation of the documentation of the core (the bundle of the site). Paths are relative to this file.
+# Docs/Engine/ is not here: it is the guide of the whole engine, in the documentation of the engine (scripts/prometheus.ps1).
 - name: Home
   href: index.md
 - name: Architecture
@@ -47,4 +47,4 @@
 - name: API
   href: ../artifacts/docs/api/
 - name: StellarEngine
-  href: https://quantumdevteam.github.io/StellarEngine-Mono/
+  href: prometheus:stellar-engine

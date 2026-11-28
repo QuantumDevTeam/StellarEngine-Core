@@ -39,11 +39,11 @@ public readonly record struct LoggerFormat(
                               "\e[31m|\e[0m " +
                               "\e[36m{5}\e[0m" +
                               "\e[31m:\e[0m" +
-                              "\e[36m{6}\e[0m " +
+                              "\e[36m{6}\e[0m" +
                               "\e[31m:\e[0m" +
                               "\e[36m{7}\e[0m " +
                               "\e[31m:\e[0m " +
-                              "\e[36m{8}\e[0m " +
+                              "\e[36m{8}\e[0m" +
                               "\e[31m.\e[0m" +
                               "\e[36m{9}\e[0m " +
                               "\e[31m-\e[0m " +
@@ -64,11 +64,11 @@ public readonly record struct LoggerFormat(
                               "\e[31m|\e[0m " +
                               "\e[36m{5}\e[0m" +
                               "\e[31m:\e[0m" +
-                              "\e[36m{6}\e[0m " +
+                              "\e[36m{6}\e[0m" +
                               "\e[31m:\e[0m" +
                               "\e[36m{7}\e[0m " +
                               "\e[31m:\e[0m " +
-                              "\e[36m{8}\e[0m " +
+                              "\e[36m{8}\e[0m" +
                               "\e[31m.\e[0m" +
                               "\e[36m{9}\e[0m " +
                               "\e[31m-\e[0m " +
@@ -89,11 +89,11 @@ public readonly record struct LoggerFormat(
                               "\e[31m|\e[0m " +
                               "\e[36m{5}\e[0m" +
                               "\e[31m:\e[0m" +
-                              "\e[36m{6}\e[0m " +
+                              "\e[36m{6}\e[0m" +
                               "\e[31m:\e[0m" +
                               "\e[36m{7}\e[0m " +
                               "\e[31m:\e[0m " +
-                              "\e[36m{8}\e[0m " +
+                              "\e[36m{8}\e[0m" +
                               "\e[31m.\e[0m" +
                               "\e[36m{9}\e[0m " +
                               "\e[31m-\e[0m " +
@@ -114,11 +114,11 @@ public readonly record struct LoggerFormat(
                               "\e[31m|\e[0m " +
                               "\e[36m{5}\e[0m" +
                               "\e[31m:\e[0m" +
-                              "\e[36m{6}\e[0m " +
+                              "\e[36m{6}\e[0m" +
                               "\e[31m:\e[0m" +
                               "\e[36m{7}\e[0m " +
                               "\e[31m:\e[0m " +
-                              "\e[36m{8}\e[0m " +
+                              "\e[36m{8}\e[0m" +
                               "\e[31m.\e[0m" +
                               "\e[36m{9}\e[0m " +
                               "\e[31m-\e[0m " +
@@ -143,7 +143,7 @@ public readonly record struct LoggerFormat(
                               "\e[31m:\e[0m" +
                               "\e[36m{7}\e[0m " +
                               "\e[31m:\e[0m " +
-                              "\e[36m{8}\e[0m " +
+                              "\e[36m{8}\e[0m" +
                               "\e[31m.\e[0m" +
                               "\e[36m{9}\e[0m " +
                               "\e[31m-\e[0m " +
@@ -164,11 +164,11 @@ public readonly record struct LoggerFormat(
                               "\e[31m|\e[0m " +
                               "\e[36m{5}\e[0m" +
                               "\e[31m:\e[0m" +
-                              "\e[36m{6}\e[0m " +
+                              "\e[36m{6}\e[0m" +
                               "\e[31m:\e[0m" +
                               "\e[36m{7}\e[0m " +
                               "\e[31m:\e[0m " +
-                              "\e[36m{8}\e[0m " +
+                              "\e[36m{8}\e[0m" +
                               "\e[31m.\e[0m" +
                               "\e[36m{9}\e[0m " +
                               "\e[31m-\e[0m " +

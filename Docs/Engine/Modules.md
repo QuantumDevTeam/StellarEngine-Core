@@ -1,6 +1,6 @@
 # Modules
 
-- [README.md](../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 A module is a folder with a [`<Id>.stellar.module`](../Formats/ModuleDescriptor.md) file. Everything else follows from
 it: the installation finds it, the SDK builds it, the analyzers keep its architecture, the packages carry it. The rule
@@ -18,7 +18,7 @@ stellar modules build --tests --pack
 
 | Step | What happens |
 |---|---|
-| `modules new` | Renders `Shared/Templates/Modules/<template>` into `modules/<Id>/`, with its documentation site (`Docs/`, `docfx.json`, a Pages workflow, a placeholder icon in `Branding/`), and syncs |
+| `modules new` | Renders `Shared/Templates/Modules/<template>` into `modules/<Id>/`, with its documentation (`Docs/`, `prometheus.json`, `docfx.json`, the docs workflow, a placeholder icon in `Branding/`), and syncs |
 | `modules sync` | Finds the modules, applies the manifest, checks the rules, writes the catalog |
 | `modules build` | For each module in load order, with the dependencies of the selected ones: native projects (MSBuild of Visual Studio), the managed project, the package (`--pack`), the tests (`--tests`) |
 | `modules list` | The modules in load order, where each came from, how it is linked |

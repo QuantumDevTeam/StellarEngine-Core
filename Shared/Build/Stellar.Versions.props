@@ -25,13 +25,25 @@
     </PropertyGroup>
 
     <!--
-        Where the core is published. One place: the docs site, the JSON schemas that files of modules and projects
-        point at ($schema), and the installer all hang off this address. A file never names a path of a machine.
+        Where the core is published: its GitHub Pages. One place: the JSON schemas that files of modules and projects
+        point at ($schema), the installer and the bundle of its documentation all hang off this address.
+        A file never names a path of a machine.
     -->
     <PropertyGroup>
         <StellarSiteUri>https://quantumdevteam.github.io/StellarEngine-Core/</StellarSiteUri>
         <StellarSchemasUri>$(StellarSiteUri)schemas/</StellarSchemasUri>
-        <!-- The site of the whole engine: the orchestra, built from the mirror (scripts/orchestra-site.ps1) -->
+        <!-- GitHub Pages of the mirror: the bundle of the whole engine (scripts/prometheus.ps1) -->
         <StellarEngineSiteUri>https://quantumdevteam.github.io/StellarEngine-Mono/</StellarEngineSiteUri>
+    </PropertyGroup>
+
+    <!--
+        Where the documentation is read: the docs site, which takes the bundle each repository publishes to its
+        GitHub Pages (the addresses above). A page of a project is <StellarDocsUri><project>/<page>. Markdown never
+        names this address: it links to other pages by relative paths (Docs/Engine/Documentation.md).
+    -->
+    <PropertyGroup>
+        <StellarDocsUri>https://notagood.org/docs/</StellarDocsUri>
+        <StellarDocsProject>stellar-core</StellarDocsProject>
+        <StellarEngineDocsProject>stellar-engine</StellarEngineDocsProject>
     </PropertyGroup>
 </Project>
