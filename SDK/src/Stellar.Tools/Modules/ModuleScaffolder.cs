@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+
 using Stellar.Kernel.Modules;
 using Stellar.Tools.Diagnostics;
 using Stellar.Tools.Environment;
@@ -22,7 +23,8 @@ public sealed record ModuleRequest(
     ModuleLevel Level,
     string? Description,
     string Template,
-    string? Directory = null);
+    string? Directory = null
+);
 
 /// <summary>
 /// Creates modules from <c>Shared/Templates/Modules</c>, and registers them with the installation.
@@ -80,12 +82,12 @@ public sealed class ModuleScaffolder
         if (Array.IndexOf(ModuleResolver.CoreModules, request.Id) >= 0)
             throw new ToolException($"{request.Id} is part of the core");
 
-        var template = Path.Combine(TemplatesDirectory, request.Template);
+        string template = Path.Combine(TemplatesDirectory, request.Template);
         if (!Directory.Exists(template))
             throw new ToolException(
                 $"Unknown module template '{request.Template}'. Available: {string.Join(", ", ListTemplates())}");
 
-        var directory = Path.GetFullPath(request.Directory ?? Path.Combine(_installation.Modules, request.Id));
+        string directory = Path.GetFullPath(request.Directory ?? Path.Combine(_installation.Modules, request.Id));
 
         _renderer.Render(template, directory, Values(request));
         ModuleFeed.EnsureReachable(_installation, directory, _logger);
@@ -99,10 +101,10 @@ public sealed class ModuleScaffolder
     /// </summary>
     public Dictionary<string, string> Values(ModuleRequest request)
     {
-        var shortName = request.Id.StartsWith("Stellar.", StringComparison.Ordinal)
+        string shortName = request.Id.StartsWith("Stellar.", StringComparison.Ordinal)
             ? request.Id.Substring("Stellar.".Length)
             : request.Id;
-        var description = request.Description ?? $"The {shortName} module of StellarEngine";
+        string description = request.Description ?? $"The {shortName} module of StellarEngine";
 
         return new Dictionary<string, string>
         {
@@ -121,6 +123,10 @@ public sealed class ModuleScaffolder
             ["CoreSiteUri"] = StellarVersions.SiteUri,
             ["EngineSiteUri"] = StellarVersions.EngineSiteUri,
             ["ModuleSiteUri"] = new Uri(new Uri(StellarVersions.SiteUri), "/" + request.Id + "/").AbsoluteUri,
+            // The project of the module on the docs site (prometheus.json): a guess the author changes when the card
+            // of the module on the site is named otherwise
+            ["ModuleDocsProject"] = "stellar-" + shortName.ToLowerInvariant().Replace(".", "-"),
+            ["EngineDocsProject"] = StellarVersions.EngineDocsProject,
             ["OrchesterVersion"] = StellarVersions.Orchester,
             ["StellarRoot"] = _installation.Root,
             ["StellarSchemasUri"] = StellarVersions.SchemasUri

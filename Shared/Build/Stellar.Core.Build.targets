@@ -12,5 +12,8 @@
         <AssemblyMetadata Include="StellarSiteUri" Value="$(StellarSiteUri)"/>
         <AssemblyMetadata Include="StellarEngineSiteUri" Value="$(StellarEngineSiteUri)"/>
         <AssemblyMetadata Include="StellarSchemasUri" Value="$(StellarSchemasUri)"/>
+        <AssemblyMetadata Include="StellarDocsUri" Value="$(StellarDocsUri)"/>
+        <AssemblyMetadata Include="StellarDocsProject" Value="$(StellarDocsProject)"/>
+        <AssemblyMetadata Include="StellarEngineDocsProject" Value="$(StellarEngineDocsProject)"/>
     </ItemGroup>
 </Project>

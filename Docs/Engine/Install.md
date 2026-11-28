@@ -78,3 +78,6 @@ the installation in the NuGet cache and the build output go. Modules, tools and 
 git clone https://github.com/QuantumDevTeam/StellarEngine-Core.git StellarEngine
 powershell -File StellarEngine\scripts\build.ps1 -Configuration Release -Install
 ```
+
+It builds the core, installs it, then builds and packs every module of `modules/`, so that games which take the
+engine as packages find them; `-SkipModules` leaves the modules for later (`stellar modules build --pack`).

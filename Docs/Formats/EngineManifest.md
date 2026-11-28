@@ -68,7 +68,7 @@ stellar modules reset Stellar.Physics                 # removes the entry
 
 | File | For |
 |---|---|
-| `stellar.modules.props` | The catalog MSBuild imports, see [Modules](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Modules.html) |
+| `stellar.modules.props` | The catalog MSBuild imports, see [Modules](../Engine/Modules.md) |
 | `stellar.modules.json` | The same modules in load order, for tools that read JSON |
 
 ## Validation

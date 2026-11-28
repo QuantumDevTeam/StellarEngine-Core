@@ -1,23 +1,27 @@
 name: Docs
 
-# Builds the documentation site of the module from Docs/ with DocFX (docfx.json) and publishes it to GitHub Pages.
-# Pull requests and manual runs on other branches only build; the site is deployed from master only.
-# Repository setting required once: Settings -> Pages -> Source = "GitHub Actions".
+# Publishes the documentation of this repository to GitHub Pages for the Prometheus site (the team site).
+# GitHub Pages is only the storage of the site: static files (the installer, the schemas), the documentation as data
+# (bundle/) and a small embed that redirects to the site when the site is up.
+#
+# This file is a thin wrapper and does not need updates: the steps (ci.py, the bundle builder, the embed) are
+# downloaded from the site on every run (/docs-kit.zip), so they are always the same version as the site.
+# What to build is described by the repository itself in prometheus.json (format prometheus-repo/1, see the DOCS
+# page of the site); without it: Docs/ and the API of the projects in docfx.json.
+# If the site is down, the static files and a page that leads to the site are published; the next run fixes the rest.
+#
+# Repository settings:
+#   Settings -> Pages -> Source = "GitHub Actions" (once)
+#   Variables (optional): PROMETHEUS_SITE (https://notagood.org by default),
+#                         PROMETHEUS_PROJECT, PROMETHEUS_TITLE (override prometheus.json)
+#   Secrets (optional):   PROMETHEUS_SYNC_KEY  an API key of the site with the "sync" scope: the site learns about
+#                         the new build at once instead of on its next check
+# Pull requests and manual runs on other branches only build; Pages is deployed from master only.
 
 on:
   push:
     branches: [master]
-    paths:
-      - 'Docs/**'
-      - 'README.md'
-      - 'docfx.json'
-      - '.github/workflows/docs.yml'
   pull_request:
-    paths:
-      - 'Docs/**'
-      - 'README.md'
-      - 'docfx.json'
-      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
@@ -31,39 +35,95 @@ env:
   DOCFX_VERSION: '2.81.0'
   DOTNET_NOLOGO: 'true'
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  PROMETHEUS_SITE: ${{ vars.PROMETHEUS_SITE || 'https://notagood.org' }}
+  PROMETHEUS_PROJECT: ${{ vars.PROMETHEUS_PROJECT }}
+  PROMETHEUS_TITLE: ${{ vars.PROMETHEUS_TITLE }}
+  OUT: artifacts/pages
 
 jobs:
   build:
-    name: Build site
-    runs-on: ubuntu-latest
+    name: Build
+    runs-on: ubuntu-latest  # pwsh, python3 and bash are there: "prepare" scripts may use any of them
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # The global.json of a module pins Stellar.Sdk, not the .NET SDK
       - name: Setup .NET
+        if: hashFiles('global.json') != ''
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Setup .NET (no global.json)
+        if: hashFiles('global.json') == ''
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '9.0.x'
 
+      # Installed outside the checkout so a repository NuGet.config (a local feed) is not involved.
       - name: Install DocFX
         working-directory: ${{ runner.temp }}
         run: dotnet tool install docfx --version "$DOCFX_VERSION" --tool-path "$RUNNER_TEMP/docfx"
 
-      - name: Build documentation
-        run: '"$RUNNER_TEMP/docfx/docfx" build docfx.json --warningsAsErrors'
+      - name: Prometheus
+        id: prometheus
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # NuGet wants the local feed folder of an installation to exist, even empty
+          mkdir -p packages
+          curl -fsSL --retry 2 "$PROMETHEUS_SITE/docs-kit.zip" -o "$RUNNER_TEMP/kit.zip"
+          unzip -q -o "$RUNNER_TEMP/kit.zip" -d "$RUNNER_TEMP/kit"
+          python3 -m pip install --quiet pyyaml
+          python3 "$RUNNER_TEMP/kit/ci.py" --out "$OUT" --docfx "$RUNNER_TEMP/docfx/docfx"
+
+      # The site is down or the build failed: publish the static files and a page that leads to the site.
+      # Self-contained on purpose (no kit): the installer and the schemas keep their addresses whatever happens.
+      - name: Fallback
+        if: steps.prometheus.outcome == 'failure'
+        run: |
+          echo "::warning title=Prometheus::The documentation was not built (is $PROMETHEUS_SITE up?); publishing the static files only"
+          mkdir -p "$OUT" && touch "$OUT/.nojekyll"
+          python3 - <<'PY'
+          import glob, html, json, os, re, shutil
+          out = os.environ["OUT"]
+          cfg = json.load(open("prometheus.json", encoding="utf-8-sig")) if os.path.isfile("prometheus.json") else {}
+          static = cfg.get("static") or next((a.get("docfx") if isinstance(a, dict) else a for a in cfg.get("api") or []), None) \
+              or ("docfx.json" if os.path.isfile("docfx.json") else None)
+          for config in ([static] if isinstance(static, str) else static or []):
+              if not os.path.isfile(config):
+                  continue
+              base = os.path.dirname(os.path.abspath(config))
+              for r in json.load(open(config, encoding="utf-8-sig")).get("build", {}).get("resource", []):
+                  src, dest = os.path.join(base, r.get("src", "")), os.path.join(out, r.get("dest", ""))
+                  for pattern in r.get("files", []):
+                      for f in glob.glob(os.path.join(src, pattern), recursive=True):
+                          if os.path.isfile(f):
+                              t = os.path.join(dest, os.path.relpath(f, src))
+                              os.makedirs(os.path.dirname(t), exist_ok=True)
+                              shutil.copy2(f, t)
+          repo = os.environ.get("GITHUB_REPOSITORY", "").rsplit("/", 1)[-1]
+          project = os.environ.get("PROMETHEUS_PROJECT") or cfg.get("project") or re.sub(r"[^a-z0-9]+", "-", repo.lower()).strip("-")
+          url = html.escape(f"{os.environ['PROMETHEUS_SITE'].rstrip('/')}/docs/{project}")
+          title = html.escape(os.environ.get("PROMETHEUS_TITLE") or cfg.get("title") or repo)
+          with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as f:
+              f.write(f'<!DOCTYPE html><html><head><meta charset="utf-8"><title>{title}</title>'
+                      f'<meta http-equiv="refresh" content="0; url={url}"></head>'
+                      f'<body><p><a href="{url}">{title} documentation</a></p></body></html>')
+          PY
 
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v5
         with:
-          path: artifacts/docs/site
+          path: ${{ env.OUT }}
 
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
+    # Never cancel a deployment that is already running.
     concurrency:
       group: pages
       cancel-in-progress: false
@@ -77,3 +137,13 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
+
+      # The site would notice the new bundle on its next check anyway; this makes it immediate.
+      - name: Nudge the site
+        continue-on-error: true
+        env:
+          KEY: ${{ secrets.PROMETHEUS_SYNC_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then echo "::notice::PROMETHEUS_SYNC_KEY is not set: the site picks the docs up on its next check"; exit 0; fi
+          sleep 30  # Pages needs a moment to serve the new files
+          curl -fsS -X POST -H "Authorization: Bearer $KEY" "$PROMETHEUS_SITE/api/v1/sync"

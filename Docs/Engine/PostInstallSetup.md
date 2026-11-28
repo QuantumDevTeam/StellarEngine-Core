@@ -1,6 +1,6 @@
 # Setting up the machine after the install
 
-- [README.md](../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 What to know once the installation stands: how git behaves in a tree of nested repositories.
 

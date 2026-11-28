@@ -27,7 +27,7 @@ The project wins over `config/`, `config/` over the defaults.
 | `StellarRoot` | `STELLAR_ROOT`, a `manifests/` above, the user registry | The root of the installation |
 | `StellarHome` | `STELLAR_HOME`, or `~/.stellar` | The registry of the user, read only when nothing else gave `StellarRoot` |
 | `StellarPackagesDir` | `$(StellarRoot)packages/` | The local feed |
-| `StellarArtifactsDir` | `$(StellarRoot)artifacts/` | Everything built: `bin/` and `obj/`, see [the layout](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Repository.html) |
+| `StellarArtifactsDir` | `$(StellarRoot)artifacts/` | Everything built: `bin/` and `obj/`, see [the layout](../Engine/Repository.md) |
 | `StellarIsEngineProject` | `true` under `$(StellarRoot)`, but in `projects/` | The engine side (modules, tools): sources in Debug, `artifacts/`. A game or a library is not |
 | `StellarUseArtifactsOutput` | `true` on the engine side, `false` for games | `false`: the plain `bin/` and `obj/` next to the project |
 | `StellarArtifactsName` | `$(MSBuildProjectName)` | The folder of the project in `artifacts/bin` and `artifacts/obj` |
