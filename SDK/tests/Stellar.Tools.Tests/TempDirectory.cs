@@ -11,7 +11,7 @@ public sealed class TempDirectory : IDisposable
 
     public string Write(string relativePath, string content = "content")
     {
-        var path = System.IO.Path.Combine(Path, relativePath);
+        string path = System.IO.Path.Combine(Path, relativePath);
 
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
         File.WriteAllText(path, content);
@@ -21,6 +21,11 @@ public sealed class TempDirectory : IDisposable
 
     public void Dispose()
     {
+        // git makes its objects read-only, and Windows does not delete those
+        foreach (FileInfo file in new DirectoryInfo(Path).EnumerateFiles("*", SearchOption.AllDirectories))
+            if (file.IsReadOnly)
+                file.IsReadOnly = false;
+
         Directory.Delete(Path, true);
     }
 }

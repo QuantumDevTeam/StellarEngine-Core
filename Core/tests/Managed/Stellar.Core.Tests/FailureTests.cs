@@ -26,11 +26,21 @@ public class FailureSystemTests
 
         public Kernel.Data.Registry.IRegistrations Registrations => throw new NotSupportedException();
 
-        public TMeta? FindMeta<TMeta>() where TMeta : class, IMetaQuant => null;
+        public TMeta? FindMeta<TMeta>()
+            where TMeta : class, IMetaQuant
+        {
+            return null;
+        }
 
-        public void Log(LogLevel level, string message) => Lines.Add((level, message));
+        public void Log(LogLevel level, string message)
+        {
+            Lines.Add((level, message));
+        }
 
-        public void LogWithoutFormat(string message) => Lines.Add((LogLevel.Info, message));
+        public void LogWithoutFormat(string message)
+        {
+            Lines.Add((LogLevel.Info, message));
+        }
 
         public void Start()
         {
@@ -47,21 +57,28 @@ public class FailureSystemTests
 
         public Failure? Stopped { get; private set; }
 
-        public void RequestStop(StopReason reason, Failure? failure = null) => Stopped = failure;
+        public void RequestStop(StopReason reason, Failure? failure = null)
+        {
+            Stopped = failure;
+        }
     }
 
     private sealed class Recorder : IFailureHandler
     {
         public List<Failure> Heard { get; } = [];
 
-        public void Handle(Failure failure) => Heard.Add(failure);
+        public void Handle(Failure failure)
+        {
+            Heard.Add(failure);
+        }
     }
 
     [Theory]
     [InlineData(FailureLevel.NonCritical, FailureReaction.None)]
     [InlineData(FailureLevel.Warning, FailureReaction.Log)]
     [InlineData(FailureLevel.Error, FailureReaction.Log | FailureReaction.StopExecution)]
-    [InlineData(FailureLevel.CriticalError, FailureReaction.Log | FailureReaction.StopExecution | FailureReaction.StopEngine)]
+    [InlineData(FailureLevel.CriticalError,
+        FailureReaction.Log | FailureReaction.StopExecution | FailureReaction.StopEngine)]
     public void Levels_HaveTheirReactionsByDefault(FailureLevel level, FailureReaction reaction)
     {
         new FailureSystem().ReactionTo(new Failure(FailureKind.Engine, level, "x")).Should().Be(reaction);
@@ -130,8 +147,8 @@ public class CatcherTests
     {
         using var catcher = new Catcher(FailureKind.FileSystem, FailureLevel.Warning);
 
-        var save = catcher.Try<string>(() => throw new IOException("no save"), fallback: "empty");
-        var next = catcher.Run(() => { });
+        string save = catcher.Try<string>(() => throw new IOException("no save"), "empty");
+        bool next = catcher.Run(() => { });
 
         save.Should().Be("empty");
         next.Should().BeTrue();
@@ -142,9 +159,9 @@ public class CatcherTests
     [Fact]
     public void AFailureThatStopsTheWork_IsThrownOn_AndTheWholeTryStops()
     {
-        var reached = false;
+        bool reached = false;
 
-        var block = () =>
+        Action block = () =>
         {
             using var catcher = new Catcher(FailureKind.FileSystem);
             catcher.Run(() => throw new IOException("disk gone"));
@@ -158,8 +175,8 @@ public class CatcherTests
     [Fact]
     public void CatchBlocks_HandleTheirExceptions_AndAreNotReported()
     {
-        var firstRun = false;
-        using var catcher = new Catcher(FailureKind.FileSystem)
+        bool firstRun = false;
+        using Catcher catcher = new Catcher(FailureKind.FileSystem)
             .Catch<FileNotFoundException>(_ => firstRun = true)
             .Catch<IOException>(FailureLevel.Warning);
 
@@ -175,9 +192,9 @@ public class CatcherTests
     {
         using var catcher = new Catcher(FailureKind.Application, FailureLevel.Warning);
 
-        var block = () => catcher.Run(() => throw new DomainNotFoundException("assets"));
+        Func<bool> block = () => catcher.Run(() => throw new DomainNotFoundException("assets"));
 
-        var thrown = block.Should().Throw<DomainNotFoundException>().Which;
+        DomainNotFoundException thrown = block.Should().Throw<DomainNotFoundException>().Which;
         thrown.Failure.Kind.Should().Be(FailureKind.FileSystem);
         catcher.Failures.Should().ContainSingle().Which.Should().BeSameAs(thrown.Failure);
     }
@@ -192,7 +209,7 @@ public class CatcherTests
         using var outer = new Catcher(system, FailureKind.Engine, FailureLevel.Warning);
 
         // A stop goes up through every catcher, as if none were there, until a plain try; it is reported once
-        var block = () => outer.Run(() =>
+        Func<bool> block = () => outer.Run(() =>
         {
             using var inner = new Catcher(system, FailureKind.Engine);
             inner.Run(() => throw new InvalidOperationException("deep"));
@@ -209,7 +226,7 @@ public class CatcherTests
         using var catcher = new Catcher(FailureKind.Engine, FailureLevel.Warning) { Keeps = 2 };
         using var forgetful = new Catcher(FailureKind.Engine, FailureLevel.Warning) { Keeps = 0 };
 
-        for (var i = 0; i < 5; i++)
+        for (int i = 0; i < 5; i++)
         {
             catcher.Report($"failure {i}");
             forgetful.Report($"failure {i}");
@@ -219,7 +236,7 @@ public class CatcherTests
         catcher.Failures.Select(failure => failure.Message).Should().Equal("failure 3", "failure 4");
         forgetful.HasFailed.Should().BeTrue();
         forgetful.Failures.Should().BeEmpty();
-        var negative = () => new Catcher { Keeps = -1 };
+        Func<Catcher> negative = () => new Catcher { Keeps = -1 };
         negative.Should().Throw<ArgumentOutOfRangeException>();
     }
 
@@ -228,7 +245,8 @@ public class CatcherTests
     {
         using var catcher = new Catcher(FailureKind.Engine, FailureLevel.CriticalError);
 
-        var failure = catcher.Guard(() => throw new InvalidOperationException("boom"), "the frame", phase: FramePhase.Update);
+        Failure? failure = catcher.Guard(() => throw new InvalidOperationException("boom"), "the frame",
+            phase: FramePhase.Update);
 
         failure.Should().NotBeNull();
         failure!.Message.Should().Be("the frame: boom");
@@ -257,7 +275,8 @@ public class CatcherTests
     {
         using var catcher = new Catcher();
 
-        catcher.Invoking(c => c.Run(() => throw new OperationCanceledException())).Should().Throw<OperationCanceledException>();
+        catcher.Invoking(c => c.Run(() => throw new OperationCanceledException())).Should()
+            .Throw<OperationCanceledException>();
         catcher.HasFailed.Should().BeFalse();
     }
 
@@ -269,10 +288,11 @@ public class CatcherTests
         catcher.Report(new InvalidOperationException("worse"), level: FailureLevel.NonCritical);
         catcher.Report("the worst", FailureLevel.Warning);
 
-        catcher.Invoking(c => c.ThrowIfFailed()).Should().Throw<FailureException>().WithMessage("a placeholder was used");
+        catcher.Invoking(c => c.ThrowIfFailed()).Should().Throw<FailureException>()
+            .WithMessage("a placeholder was used");
     }
 
-    [Fact]
+    [NativeFact]
     public void InAnEngine_TheCatcherReportsToItsSystem()
     {
         var engine = new ScopeEngine("Failing");
@@ -283,7 +303,9 @@ public class CatcherTests
 
         using (EngineScope.Enter(engine))
         using (var catcher = new Catcher(FailureKind.Engine, FailureLevel.Warning))
+        {
             catcher.Run(() => throw new InvalidOperationException("in the engine"));
+        }
 
         recorder.Count.Should().Be(1);
         CoreEngine.Release(engine);
@@ -293,7 +315,10 @@ public class CatcherTests
     {
         public int Count { get; private set; }
 
-        public void Handle(Failure failure) => Count++;
+        public void Handle(Failure failure)
+        {
+            Count++;
+        }
     }
 }
 
@@ -310,12 +335,12 @@ public class EntryPointTests
     [Fact]
     public void Constructor_WithNullConfiguration_Throws()
     {
-        var action = () => new EntryPoint(null!);
+        Func<EntryPoint> action = () => new EntryPoint(null!);
 
         action.Should().Throw<ArgumentNullException>();
     }
 
-    [Fact]
+    [NativeFact]
     public void Run_PublishesTheFailureSystem_AndDisposeWithdrawsIt()
     {
         var engine = new ScopeEngine("Entry");

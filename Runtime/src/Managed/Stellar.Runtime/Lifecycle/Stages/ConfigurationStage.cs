@@ -1,3 +1,4 @@
+using Stellar.Kernel.Configuration;
 using Stellar.Runtime.Configuration;
 using Stellar.Runtime.Failures;
 using Stellar.Runtime.Modules;
@@ -20,10 +21,10 @@ public sealed class ConfigurationStage
     /// <inheritdoc/>
     public ValueTask StartAsync(RuntimeContext context)
     {
-        var configuration = context.ConfigurationLocator.Read(context.Launch.ApplicationPath);
-
-        context.Configuration = configuration;
+        RuntimeConfiguration configuration =
+            context.Configuration = context.ConfigurationLocator.Read(context.Launch.ApplicationPath);
         context.Settings = RuntimeSettings.Create(configuration, context.Launch.Arguments);
+        configuration.Settings = context.Settings.ToDictionary(); // applying Launch.Arguments to runtime config
         context.Log.Verbose |= context.Settings.Verbose;
         context.Plan = ModulePlan.From(configuration);
 

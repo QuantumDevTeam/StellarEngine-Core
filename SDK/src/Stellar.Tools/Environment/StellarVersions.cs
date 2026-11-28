@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+
 using Stellar.Tools.Diagnostics;
 
 namespace Stellar.Tools.Environment;
@@ -57,9 +58,31 @@ public static class StellarVersions
     /// </summary>
     public static string SchemasUri => Get("StellarSchemasUri");
 
+    /// <summary>
+    /// Gets the address of the docs site, ending with a slash: a page of a project is
+    /// <c>{DocsUri}{project}/{page}</c>.
+    /// </summary>
+    public static string DocsUri => Get("StellarDocsUri");
+
+    /// <summary>Gets the project of the core on the docs site.</summary>
+    public static string DocsProject => Get("StellarDocsProject");
+
+    /// <summary>Gets the project of the whole engine on the docs site: the guide, the core and every module.</summary>
+    public static string EngineDocsProject => Get("StellarEngineDocsProject");
+
+    /// <summary>
+    /// Gets the address of a page of a project on the docs site.
+    /// </summary>
+    /// <param name="project">The project, for example <see cref="EngineDocsProject"/>.</param>
+    /// <param name="page">The page: its path in <c>Docs/</c> without <c>.md</c>; empty for the home of the project.</param>
+    public static string DocsPage(string project, string page = "")
+    {
+        return DocsUri + project + (string.IsNullOrEmpty(page) ? string.Empty : "/" + page.TrimStart('/'));
+    }
+
     private static string Get(string key)
     {
-        return Metadata.TryGetValue(key, out var value)
+        return Metadata.TryGetValue(key, out string? value)
             ? value
             : throw new ToolException($"{key} is missing from the assembly metadata of Stellar.Tools");
     }

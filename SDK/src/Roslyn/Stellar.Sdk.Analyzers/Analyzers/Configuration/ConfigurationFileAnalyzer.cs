@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Immutable;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+
 using Stellar.Sdk.Analyzers.Diagnostics;
 using Stellar.Sdk.Analyzers.Internal;
 
@@ -16,7 +18,9 @@ namespace Stellar.Sdk.Analyzers.Analyzers.Configuration;
 public sealed class ConfigurationFileAnalyzer
     : DiagnosticAnalyzer
 {
-    private static readonly string[] Extensions = { ".stellar.project", ".stellar.module" };
+    private static readonly string[] Extensions = [".stellar.project", ".stellar.module"];
+
+    // ── DiagnosticAnalyzer ────────────────────────────────────────────────
 
     /// <inheritdoc/>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
@@ -30,19 +34,22 @@ public sealed class ConfigurationFileAnalyzer
         context.RegisterAdditionalFileAction(Analyze);
     }
 
+    // ── Additional file action ────────────────────────────────────────────
+
     private static void Analyze(AdditionalFileAnalysisContext context)
     {
-        var path = context.AdditionalFile.Path;
+        string path = context.AdditionalFile.Path;
         if (Array.TrueForAll(Extensions, extension => !path.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
             return;
 
-        var text = context.AdditionalFile.GetText(context.CancellationToken);
-        if (text is null || JsonSyntaxChecker.TryCheck(text.ToString(), out var position, out var message))
+        SourceText? text = context.AdditionalFile.GetText(context.CancellationToken);
+        if (text is null || JsonSyntaxChecker.TryCheck(text.ToString(), out int position, out string message))
             return;
 
         var span = new TextSpan(Math.Min(position, Math.Max(0, text.Length - 1)), text.Length == 0 ? 0 : 1);
         var location = Location.Create(path, span, text.Lines.GetLinePositionSpan(span));
 
+        // ── STLR0301: malformed configuration file ────────────────────────
         context.ReportDiagnostic(Diagnostic.Create(
             StellarDiagnosticDescriptors.MalformedConfigurationFile,
             location,

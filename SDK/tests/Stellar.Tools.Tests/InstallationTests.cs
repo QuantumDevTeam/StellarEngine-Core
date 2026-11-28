@@ -1,4 +1,5 @@
 using System.Diagnostics;
+
 using Stellar.Tools.Diagnostics;
 using Stellar.Tools.Environment;
 using Stellar.Tools.Installation;
@@ -35,8 +36,9 @@ public class InstallationRegistryTests
         registry.Find("0.8.0")!.Root.Should().Be(second.Root);
         registry.Find("0.9.0")!.Root.Should().Be(other.Root);
 
-        var props = File.ReadAllText(registry.MSBuildFile);
-        props.Should().Contain("'$(StellarOrchesterVersion)' == '0.8.0'\">" + second.Root + Path.DirectorySeparatorChar);
+        string props = File.ReadAllText(registry.MSBuildFile);
+        props.Should()
+            .Contain("'$(StellarOrchesterVersion)' == '0.8.0'\">" + second.Root + Path.DirectorySeparatorChar);
         props.Should().Contain("'$(StellarOrchesterVersion)' == '0.9.0'\">" + other.Root + Path.DirectorySeparatorChar);
         props.Should().NotContain(first.Root + Path.DirectorySeparatorChar + "<");
     }
@@ -49,15 +51,37 @@ public class InstallationRegistryTests
         var installation = new StellarInstallation(Path.Combine(directory.Path, "engine"));
         var other = new StellarInstallation(Path.Combine(directory.Path, "other"));
 
-        registry.Register("0.8.0", installation);
-        registry.Register("0.9.0", installation);
         registry.Register("1.0.0", other);
+        File.WriteAllText(registry.File, File.ReadAllText(registry.File).Replace("\"Installations\": [",
+            $"\"Installations\": [ {{ \"OrchesterVersion\": \"0.8.0\", \"Root\": {Json(installation.Root)} }}, " +
+            $"{{ \"OrchesterVersion\": \"0.9.0\", \"Root\": {Json(installation.Root)} }},"));
 
         registry.Unregister(installation).Should().BeEquivalentTo("0.8.0", "0.9.0");
         registry.List().Should().ContainSingle().Which.OrchesterVersion.Should().Be("1.0.0");
 
         registry.Unregister(other).Should().Equal("1.0.0");
         Directory.Exists(registry.Directory).Should().BeFalse();
+    }
+
+    private static string Json(string text)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(text);
+    }
+
+    [Fact]
+    public void Register_ANewOrchestraInTheSameRoot_ReplacesTheOldOne()
+    {
+        using var directory = new TempDirectory();
+        var registry = new InstallationRegistry(Path.Combine(directory.Path, "home"));
+        var installation = new StellarInstallation(Path.Combine(directory.Path, "engine"));
+        var other = new StellarInstallation(Path.Combine(directory.Path, "other"));
+
+        registry.Register("0.9.0", other);
+        registry.Register("0.10.0", installation);
+        registry.Register("0.11.0", installation);
+
+        registry.List().Select(entry => $"{entry.OrchesterVersion} {entry.Root}")
+            .Should().Equal($"0.11.0 {installation.Root}", $"0.9.0 {other.Root}");
     }
 
     [Fact]
@@ -78,18 +102,19 @@ public class InstallationRegistryTests
 public class UninstallerTests
 {
     private static (StellarInstallation Installation, InstallationRegistry Registry, string Cache) Installed(
-        TempDirectory directory)
+        TempDirectory directory
+    )
     {
         directory.Write("Shared/Templates/Installation/config/Stellar.Sdk.props", "settings {{OrchesterVersion}}");
         directory.Write("Shared/Templates/Installation/projects/Directory.Build.props", "isolation");
-        var installation = FakeCore.Create(directory);
+        StellarInstallation installation = FakeCore.Create(directory);
         var registry = new InstallationRegistry(Path.Combine(directory.Path, "home"));
 
         EngineInstaller.Install(installation, NullToolLogger.Instance, registry);
 
         directory.Write("packages/Stellar.Kernel.0.8.0.nupkg");
         directory.Write("packages/Stellar.Sdk.0.4.0-preview.1.nupkg");
-        var cache = Path.Combine(directory.Path, "nuget");
+        string cache = Path.Combine(directory.Path, "nuget");
         directory.Write("nuget/stellar.kernel/0.8.0/stellar.kernel.nuspec");
         directory.Write("nuget/stellar.kernel/0.7.0/stellar.kernel.nuspec");
         directory.Write("nuget/stellar.sdk/0.4.0-preview.1/stellar.sdk.nuspec");
@@ -103,7 +128,7 @@ public class UninstallerTests
     {
         using var directory = new TempDirectory();
 
-        var action = () => EngineUninstaller.Uninstall(new StellarInstallation(directory.Path),
+        Func<UninstallReport> action = () => EngineUninstaller.Uninstall(new StellarInstallation(directory.Path),
             NullToolLogger.Instance, new UninstallOptions());
 
         action.Should().Throw<ToolException>().WithMessage("*not a checkout of StellarEngine-Core*");
@@ -113,12 +138,12 @@ public class UninstallerTests
     public void Uninstall_LeavesAPlainCheckout_AndNeverTouchesTheContentOfTheUser()
     {
         using var directory = new TempDirectory();
-        var (installation, registry, cache) = Installed(directory);
+        (StellarInstallation installation, InstallationRegistry registry, string cache) = Installed(directory);
         directory.Write("modules/Stellar.FileSystem/Stellar.FileSystem.stellar.module", "{}");
         directory.Write("projects/MyGame/MyGame.csproj", "<Project/>");
         directory.Write("tools/StellarEditor/README.md");
 
-        var report = EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
+        UninstallReport report = EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
             new UninstallOptions { Registry = registry, PackageCache = cache });
 
         // The machine forgot it
@@ -132,7 +157,7 @@ public class UninstallerTests
         Directory.Exists(Path.Combine(cache, "newtonsoft.json", "13.0.3")).Should().BeTrue();
 
         // What the installer made is gone
-        foreach (var path in new[]
+        foreach (string path in new[]
                  {
                      installation.Packages, installation.Manifests, installation.Config,
                      Path.Combine(installation.Modules, "Directory.Build.props"),
@@ -153,12 +178,12 @@ public class UninstallerTests
     public void Uninstall_RemovesEmptyFoldersOfTheInstaller()
     {
         using var directory = new TempDirectory();
-        var (installation, registry, cache) = Installed(directory);
+        (StellarInstallation installation, InstallationRegistry registry, string cache) = Installed(directory);
 
         EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
             new UninstallOptions { Registry = registry, PackageCache = cache });
 
-        foreach (var path in new[] { installation.Modules, installation.Projects, installation.Tools })
+        foreach (string path in new[] { installation.Modules, installation.Projects, installation.Tools })
             Directory.Exists(path).Should().BeFalse(path);
     }
 
@@ -166,11 +191,11 @@ public class UninstallerTests
     public void Uninstall_KeepsEditedFiles_UnlessAll()
     {
         using var directory = new TempDirectory();
-        var (installation, registry, _) = Installed(directory);
-        var settings = Path.Combine(installation.Config, "Stellar.Sdk.props");
+        (StellarInstallation installation, InstallationRegistry registry, _) = Installed(directory);
+        string settings = Path.Combine(installation.Config, "Stellar.Sdk.props");
         File.WriteAllText(settings, "my settings");
 
-        var report = EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
+        UninstallReport report = EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
             new UninstallOptions { Registry = registry });
 
         File.ReadAllText(settings).Should().Be("my settings");
@@ -186,9 +211,9 @@ public class UninstallerTests
     public void Uninstall_DryRun_ChangesNothing()
     {
         using var directory = new TempDirectory();
-        var (installation, registry, cache) = Installed(directory);
+        (StellarInstallation installation, InstallationRegistry registry, string cache) = Installed(directory);
 
-        var report = EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
+        UninstallReport report = EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
             new UninstallOptions { Registry = registry, PackageCache = cache, DryRun = true });
 
         report.Unregistered.Should().Equal(StellarVersions.Orchester);
@@ -207,16 +232,21 @@ public class UninstallerTests
 
         using var directory = new TempDirectory();
         using var outside = new TempDirectory();
-        var precious = outside.Write("precious.txt", "keep me");
-        var (installation, registry, _) = Installed(directory);
+        string precious = outside.Write("precious.txt", "keep me");
+        (StellarInstallation installation, InstallationRegistry registry, _) = Installed(directory);
 
-        var junction = Path.Combine(installation.Packages, "linked");
-        using (var mklink = Process.Start(new ProcessStartInfo("cmd.exe", $"/c mklink /J \"{junction}\" \"{outside.Path}\"")
-                   { CreateNoWindow = true, UseShellExecute = false }))
+        string junction = Path.Combine(installation.Packages, "linked");
+        using (Process? mklink = Process.Start(
+                   new ProcessStartInfo("cmd.exe", $"/c mklink /J \"{junction}\" \"{outside.Path}\"")
+                       { CreateNoWindow = true, UseShellExecute = false }))
+        {
             mklink!.WaitForExit();
+        }
+
         Directory.Exists(junction).Should().BeTrue("the junction must exist for this test to mean anything");
 
-        EngineUninstaller.Uninstall(installation, NullToolLogger.Instance, new UninstallOptions { Registry = registry });
+        EngineUninstaller.Uninstall(installation, NullToolLogger.Instance,
+            new UninstallOptions { Registry = registry });
 
         Directory.Exists(installation.Packages).Should().BeFalse();
         File.ReadAllText(precious).Should().Be("keep me");

@@ -26,14 +26,14 @@ them, but Rider shows an item written in a project file as a file of the project
 The SDK version is pinned once, in `global.json`, not in every project:
 
 ```json
-{ "msbuild-sdks": { "Stellar.Sdk": "0.4.1" } }
+{ "msbuild-sdks": { "Stellar.Sdk": "0.4.2" } }
 ```
 
 The SDK itself comes from the local feed through `NuGet.config`. `stellar project new` and `stellar modules new`
 generate both files; a project under the root of the installation also finds the `NuGet.config` of the root.
 
 A module project needs even less: it is nearly empty, and the SDK takes its kind, version and dependencies from its
-descriptor. See [Modules](https://quantumdevteam.github.io/StellarEngine-Mono/guide/Modules.html). Every property: [Sdk.Properties](../Reference/Sdk.Properties.md).
+descriptor. See [Modules](../Engine/Modules.md). Every property: [Sdk.Properties](../Reference/Sdk.Properties.md).
 
 ## Kinds of projects
 
@@ -136,7 +136,7 @@ NuGet cache: the next restore of a game takes the new ones.
 | Target | Task | Result | Switch (`=false`) |
 |---|---|---|---|
 | `StellarResolveProject` | `ResolveStellarProject` | Parses `.stellar.project`, selects assets | `StellarEnableAssets` for the assets |
-| `StellarCompileResources` | `CompileStellarResources` | `resources/**/*.sres` in the output | `StellarEnableResourceCompilation` |
+| `StellarCompileResources` | `CompileStellarResources` | `Resources/**/*.sres` in the output | `StellarEnableResourceCompilation` |
 | `StellarGenerateRuntimeConfiguration` | `GenerateRuntimeConfiguration` | `{Project}.stellar.runtime.config.json` | `StellarEnableRuntimeConfiguration` |
 | `StellarGenerateLauncher` | `GenerateStellarLauncher` | The `Main` of an executable module | `StellarEnableLauncher` |
 

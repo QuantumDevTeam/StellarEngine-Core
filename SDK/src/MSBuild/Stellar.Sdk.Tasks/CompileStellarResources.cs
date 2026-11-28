@@ -2,10 +2,13 @@
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+
 using Stellar.Tools.Environment;
 using Stellar.Tools.Projects;
 using Stellar.Tools.Resources;
@@ -36,21 +39,21 @@ public sealed class CompileStellarResources
     /// <inheritdoc/>
     protected override void Run()
     {
-        var project = StellarProject.Load(ConfigurationFile);
-        var sources = ProjectFileResolver.Resolve(project).Resources;
+        StellarProject project = StellarProject.Load(ConfigurationFile);
+        IReadOnlyList<ProjectFile> sources = ProjectFileResolver.Resolve(project).Resources;
 
         var compilers = ResourceCompilerRegistry.CreateDefault();
 
         if (!string.IsNullOrEmpty(StellarRoot))
             compilers.AddFromDirectory(new StellarInstallation(StellarRoot).ResourceCompilers, this);
 
-        foreach (var assembly in project.Configuration.Resources?.Compilers ?? [])
+        foreach (string assembly in project.Configuration.Resources?.Compilers ?? [])
             compilers.AddFrom(Path.Combine(project.Directory, assembly), this);
 
-        var outputRoot = Path.GetFullPath(Path.Combine(project.Directory, OutputDirectory))
+        string outputRoot = Path.GetFullPath(Path.Combine(project.Directory, OutputDirectory))
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-        var result = new ResourcePipeline(compilers, this).Compile(sources, outputRoot);
+        ResourcePipelineResult result = new ResourcePipeline(compilers, this).Compile(sources, outputRoot);
 
         Log.LogMessage(MessageImportance.High, $"Resource compilation result: " +
                                                $"UpToDate - {result.UpToDate}, " +
@@ -61,7 +64,7 @@ public sealed class CompileStellarResources
             .Select(output =>
             {
                 var item = new TaskItem(output);
-                item.SetMetadata("Link", Path.Combine("resources", output.Substring(outputRoot.Length + 1)));
+                item.SetMetadata("Link", Path.Combine("Resources", output.Substring(outputRoot.Length + 1)));
                 item.SetMetadata("CopyToOutputDirectory", "PreserveNewest");
                 return (ITaskItem)item;
             })

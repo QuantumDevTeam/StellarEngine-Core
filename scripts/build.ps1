@@ -36,6 +36,10 @@
     With -Install: do not register this installation for the current user ($STELLAR_HOME or ~/.stellar), and do
     not install the 'stellar' command. For sandboxes.
 
+.PARAMETER SkipModules
+    With -Install: do not build and pack the modules of modules/. Without it they are built after the core, with
+    their tests unless -SkipTests, so games that take the engine as packages find them.
+
 .PARAMETER Uninstall
     Undoes -Install and the build instead of building: 'stellar uninstall' here (the registration of the user, the
     packages of this installation in the NuGet cache, what the installer created), the 'stellar' command, then
@@ -57,6 +61,7 @@ param(
     [switch]$Pack,
     [switch]$Install,
     [switch]$NoUserRegistration,
+    [switch]$SkipModules,
     [switch]$Uninstall,
     [switch]$All,
     [switch]$KeepArtifacts
@@ -181,17 +186,17 @@ if (-not $SkipNative) {
             "-p:Configuration=$Configuration" -p:Platform=x64 -m -nologo -v:minimal
     }
 
+    if (-not $SkipTests) {
+        Invoke-Step 'Native tests' {
+            & (Join-Path $root "artifacts/bin/Stellar.Native.Core.Tests/$Configuration/Stellar.Native.Core.Tests.exe")
+        }
+    }
+
     # Built by the MSBuild of Visual Studio: the .NET SDK cannot build C++/CLI
     if ($canBuildCli) {
         Invoke-Step 'C++/CLI wrapper' {
             & $msbuild (Join-Path $root 'Core/src/NativeInterop/Stellar.Native.Core.Wrapper.Cli/Stellar.Native.Core.Wrapper.Cli.vcxproj') `
                 -restore "-p:Configuration=$Configuration" -p:Platform=x64 -m -nologo -v:minimal
-        }
-    }
-
-    if (-not $SkipTests) {
-        Invoke-Step 'Native tests' {
-            & (Join-Path $root "artifacts/bin/Stellar.Native.Core.Tests/$Configuration/Stellar.Native.Core.Tests.exe")
         }
     }
 }
@@ -212,7 +217,12 @@ foreach ($variant in $wrappers) {
 }
 
 if ($Pack) {
-    $projects = 'Kernel/src/Managed/Stellar.Kernel', 'Core/src/Managed/Stellar.Core', 'Runtime/src/Managed/Stellar.Runtime', 'SDK/src/Stellar.Tools', 'SDK/src/Stellar.Cli', 'SDK/src/MSBuild/Stellar.Sdk'
+    $projects = 'Kernel/src/Managed/Stellar.Kernel',
+                'Core/src/Managed/Stellar.Core',
+                'Runtime/src/Managed/Stellar.Runtime',
+                'SDK/src/Stellar.Tools',
+                'SDK/src/Stellar.Cli',
+                'SDK/src/MSBuild/Stellar.Sdk'
 
     foreach ($project in $projects) {
         $csproj = Join-Path $root "$project/$(Split-Path $project -Leaf).csproj"
@@ -251,6 +261,21 @@ if ($Install) {
 
     # Registration and the command go together: both belong to the user, not to the checkout
     if (-not $NoUserRegistration) { Install-StellarTool }
+
+    $modules = @(Get-ChildItem (Join-Path $root 'modules') -Filter '*.stellar.module' -Recurse -Depth 1 -ErrorAction SilentlyContinue)
+    if (-not $SkipModules -and $modules.Count -gt 0) {
+        $arguments = @('modules', 'build', '--pack', '-c', $Configuration, '--wrapper', $Wrapper)
+        if (-not $SkipTests) { $arguments += '--tests' }
+
+        Invoke-Step "Modules ($($modules.Count))" {
+            Push-Location $root
+            try {
+                dotnet run --project (Join-Path $root 'SDK/src/Stellar.Cli/Stellar.Cli.csproj') -c $Configuration --no-build -- @arguments
+            } finally {
+                Pop-Location
+            }
+        }
+    }
 }
 
-Write-Host "StellarEngine-Core built ($Configuration, wrappers: $($wrappers -join ', '), packed with: $Wrapper) in $root" -ForegroundColor Green
+Write-Host "StellarEngine built ($Configuration, wrappers: $($wrappers -join ', '), packed with: $Wrapper) in $root" -ForegroundColor Green

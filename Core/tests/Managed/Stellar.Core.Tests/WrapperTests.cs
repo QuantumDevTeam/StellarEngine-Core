@@ -1,12 +1,11 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Stellar.Core.Data.Registry;
-using Stellar.Core.Modules;
-using Stellar.Core.Native;
+
 using Stellar.Kernel;
 using Stellar.Kernel.Interop;
 using Stellar.Kernel.Versioning;
+using Stellar.Core.Native;
 
 namespace Stellar.Core.Tests;
 
@@ -17,7 +16,8 @@ internal static class Build
 {
     private static string Metadata(string key)
     {
-        return typeof(Build).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+        return typeof(Build).Assembly
+                   .GetCustomAttributes<AssemblyMetadataAttribute>()
                    .Single(attribute => attribute.Key == key).Value
                ?? string.Empty;
     }
@@ -61,11 +61,14 @@ public class ContractTests
     [InlineData(1u, 1u, 1u, 2u, false)]
     [InlineData(2u, 0u, 1u, 0u, false)]
     [InlineData(1u, 0u, 2u, 0u, false)]
-    public void Satisfies_FollowsTheVersionRule(uint major, uint minor, uint requiredMajor, uint requiredMinor,
-        bool expected)
+    public void Satisfies_FollowsTheVersionRule(
+        uint major, uint minor, uint requiredMajor, uint requiredMinor,
+        bool expected
+    )
     {
-        new ContractVersion(major, minor).Satisfies(new ContractVersion(requiredMajor, requiredMinor)).Should()
-            .Be(expected);
+        new ContractVersion(major, minor)
+            .Satisfies(new ContractVersion(requiredMajor, requiredMinor))
+            .Should().Be(expected);
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public class ContractTests
 }
 
 /// <summary>
-/// The behaviour every wrapper must have. The suite runs once per wrapper: <c>-p:StellarNativeWrapper=...</c>.
+/// The behavior every wrapper must have. The suite runs once per wrapper: <c>-p:StellarNativeWrapper=...</c>.
 /// </summary>
 public class WrapperTests
 {
@@ -99,14 +102,19 @@ public class WrapperTests
     public void Identifier_HasTheBytesOfTheNativeCore()
     {
         // The vector of the native tests: the same text gives the same 16 bytes on both sides
-        Identifier.Parse("00112233-4455-6677-8899-aabbccddeeff").ToBytes().Should().Equal(
-            0x33, 0x22, 0x11, 0x00, 0x55, 0x44, 0x77, 0x66, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF);
+        Identifier.Parse("00112233-4455-6677-8899-aabbccddeeff").ToBytes()
+            .Should().Equal(
+                0x33, 0x22, 0x11, 0x00,
+                0x55, 0x44,
+                0x77, 0x66,
+                0x88, 0x99,
+                0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF);
     }
 
     [NativeFact]
     public void Failures_ComeBackAsExceptions()
     {
-        var load = () => CoreContext.Current.Modules.Load("no-such-module.dll");
+        Func<NativeHandle> load = () => CoreContext.Current.Modules.Load("no-such-module.dll");
 
         load.Should().Throw<NativeCoreException>()
             .Where(exception => exception.Result == NativeResult.NotFound)
@@ -117,9 +125,9 @@ public class WrapperTests
     public void StaleModuleHandle_IsRejected()
     {
         var stale = new NativeHandle(1000, 1);
-        var getName = () => CoreContext.Current.Modules.GetName(stale);
-
         CoreContext.Current.Modules.Unload(stale).Should().BeFalse();
+
+        Func<string> getName = () => CoreContext.Current.Modules.GetName(stale);
         getName.Should().Throw<NativeCoreException>()
             .Where(exception => exception.Result == NativeResult.InvalidHandle);
     }
@@ -137,39 +145,29 @@ public class WrapperParityTests
     internal static string ManagedPath => Path.Combine(Build.EngineCoreDir, "artifacts", "bin",
         "Stellar.Native.Core.Wrapper.Managed", Build.Configuration, "Stellar.Native.Core.Wrapper.Managed.dll");
 
-    [BothWrappersFact]
-    public void Wrappers_DefineTheSameApi()
-    {
-        var cli = Surface(CliPath);
-        var managed = Surface(ManagedPath);
-
-        cli.Except(managed).Should().BeEmpty("the C++/CLI wrapper must not have what the Managed one lacks");
-        managed.Except(cli).Should().BeEmpty("the Managed wrapper must not have what the C++/CLI one lacks");
-    }
-
     private static SortedSet<string> Surface(string path)
     {
-        var runtime = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
-        var kernel = typeof(NativeHandle).Assembly.Location;
+        string[] runtime = Directory.GetFiles(RuntimeEnvironment.GetRuntimeDirectory(), "*.dll");
+        string kernel = typeof(NativeHandle).Assembly.Location;
         var resolver = new PathAssemblyResolver(runtime.Append(kernel).Append(path));
 
         using var context = new MetadataLoadContext(resolver);
-        var assembly = context.LoadFromAssemblyPath(path);
-        var surface = new SortedSet<string>(StringComparer.Ordinal);
+        Assembly assembly = context.LoadFromAssemblyPath(path);
+        SortedSet<string> surface = new(StringComparer.Ordinal);
 
         const BindingFlags members = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static |
                                      BindingFlags.DeclaredOnly;
 
-        foreach (var type in assembly.GetExportedTypes())
+        foreach (Type type in assembly.GetExportedTypes())
         {
             surface.Add($"type {type.FullName}");
 
-            foreach (var member in type.GetMembers(members))
+            foreach (MemberInfo member in type.GetMembers(members))
             {
-                var signature = member switch
+                string? signature = member switch
                 {
-                    MethodBase { IsSpecialName: true } method when !method.IsConstructor &&
-                                                                   !method.Name.StartsWith("op_") => null,
+                    MethodBase { IsSpecialName: true, IsConstructor: false } method
+                        when !method.Name.StartsWith("op_") => null,
                     MethodBase method =>
                         $"{Name(method)}({string.Join(", ", method.GetParameters().Select(Parameter))})"
                         + (method is MethodInfo info ? $" : {TypeName(info.ReturnType)}" : string.Empty),
@@ -210,5 +208,15 @@ public class WrapperParityTests
             return
                 $"{TypeName(parameter.ParameterType)} {parameter.Name}{(parameter.IsOptional ? " = optional" : string.Empty)}";
         }
+    }
+
+    [BothWrappersFact]
+    public void Wrappers_DefineTheSameApi()
+    {
+        SortedSet<string> cli = Surface(CliPath);
+        SortedSet<string> managed = Surface(ManagedPath);
+
+        cli.Except(managed).Should().BeEmpty("the C++/CLI wrapper must not have what the Managed one lacks");
+        managed.Except(cli).Should().BeEmpty("the Managed wrapper must not have what the C++/CLI one lacks");
     }
 }

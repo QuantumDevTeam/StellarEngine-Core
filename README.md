@@ -77,6 +77,7 @@ powershell -File scripts/build.ps1
 | `-Pack` | Also fills the local feed, `packages/` |
 | `-Install` | Also runs `stellar install` here; implies `-Pack` |
 | `-NoUserRegistration` | With `-Install`: do not register the installation for the current user (`~/.stellar`) |
+| `-SkipModules` | With `-Install`: do not build and pack the modules of `modules/`, which it does by default |
 | `-Uninstall` | Instead of building: `stellar uninstall` here, then `artifacts/`. Modules, tools and games stay |
 | `-All` | With `-Uninstall`: also the files you may have edited (`config/`, isolation files, the manifest) |
 | `-KeepArtifacts` | With `-Uninstall`: keep the build output |
@@ -109,7 +110,7 @@ Every module and tool is a repository of its own, cloned into its folder of the 
 |---|---|
 | `scripts/solution.ps1` | Writes `StellarEngine.sln`: the core and every project of `modules/` and `tools/`, for the IDE. Ignored by git; run it again when a module or a project appears |
 | `scripts/mirror.ps1` | Makes a snapshot of the committed state of every component as one commit of the mirror (StellarEngine-Mono), the core at the root and each component in its folder. `-Tag v0.8.0`, `-Push` |
-| `scripts/orchestra-site.ps1` | Generates the DocFX project of the orchestra site (`docfx.orchestra.json`): the core and every module in one site. The docs workflow runs it in the mirror |
+| `scripts/prometheus.ps1` | Writes `prometheus.json`, what the docs workflow publishes: the core, or in the mirror the whole engine. `-Print` shows it. See [Writing the documentation](Docs/Engine/Documentation.md) |
 
 See [Components and the mirror](Docs/Engine/Repository.md#components-and-the-mirror).
 
@@ -141,6 +142,7 @@ Reference:
 Workflow:
 
 - [Contributing](CONTRIBUTING.md), [Git policy](Docs/Engine/GitPolicy.md), [versioning](Docs/Engine/Versioning.md)
+- [Migrating to 0.11](Docs/Migration-0.11.md)
 - [Migrating to 0.10](Docs/Migration-0.10.md)
 - [Migrating to 0.9](Docs/Migration-0.9.md)
 - [Migrating modules to 0.8](Docs/Migration-0.8.md)

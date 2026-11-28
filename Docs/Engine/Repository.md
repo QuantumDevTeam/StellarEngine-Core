@@ -1,6 +1,6 @@
 # Repository and installation layout
 
-- [README.md](../../README.md)
+- [README.md](https://github.com/QuantumDevTeam/StellarEngine-Core#readme)
 
 ## One tree: the core is the root
 
@@ -33,7 +33,8 @@ cd StellarEngine
 powershell -File scripts/build.ps1 -Configuration Release -Install
 ```
 
-`build.ps1 -Install` builds the core, fills `packages/` and runs `stellar install` in place. Running it again after
+`build.ps1 -Install` builds the core, fills `packages/` and runs `stellar install` in place, then builds and packs the
+modules of `modules/` (`-SkipModules` leaves them). Running it again after
 `git pull` updates the core and keeps everything the installation holds: `stellar install` never overwrites a file.
 
 `Stellar.Tools.Environment.StellarInstallation` is the single description of this tree in code. MSBuild has its own
@@ -59,7 +60,8 @@ So a module or a game inside the installation needs nothing, and one elsewhere u
 ```
 
 What an orchestra holds stays in its own `manifests/`. `stellar install` registers the installation, registering a
-version again moves it; `stellar install --no-user-registration` leaves the registry alone.
+version again moves it, and a root installed again with another orchestra keeps only that one;
+`stellar install --no-user-registration` leaves the registry alone.
 
 ### Uninstalling
 
@@ -157,23 +159,23 @@ snapshot stays local and the script prints the push command; `-Tag` marks a rele
 
 ### Sites
 
-Every repository publishes its documentation with DocFX to GitHub Pages, by the same `.github/workflows/docs.yml`.
-Each site says where it is: the site of the engine is about the engine as a whole, the site of a component about that
-component alone.
+The documentation is read on the docs site (`StellarDocsUri`). Every repository publishes its part to its GitHub
+Pages with the same `.github/workflows/docs.yml`, a copy of the workflow of the docs site that never needs updating:
+it takes the steps from the site on every run. What a repository publishes is in `prometheus.json` at its root.
 
-| Site | Address | Content |
+| Project of the docs site | Built from | Content |
 |---|---|---|
-| the engine | `StellarEngineSiteUri`, built from the mirror | the home of StellarEngine: getting started, the guide (`Docs/Engine/` of the core: installing, architecture, modules, this page, the project), the core under `/core/`, each component under `/modules/<Module>/` or `/tools/<Tool>/`, the installer and the schemas |
-| the core | `StellarSiteUri` | the core alone: `Docs/` without `Docs/Engine/`, the API reference of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`, the JSON schemas (`/schemas/`), the installer (`/install.ps1`) |
-| a module | the same host, `/<Module>/` | its `Docs/` and README; `stellar modules new` creates them with `docfx.json` and the workflow |
+| the engine, `StellarEngineDocsProject` | the mirror | the guide (`Docs/Engine/` of the core: installing, architecture, modules, this page, the project), the core under `core/` with its API, each module and tool with a `Docs/toc.yml` under `modules/<Module>/` or `tools/<Tool>/` |
+| the core, `StellarDocsProject` | the core | `Docs/` without `Docs/Engine/`, the API reference of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools` |
+| a module | its repository | its `Docs/`; `stellar modules new` creates them with `prometheus.json` and the workflow |
 
-Both addresses are set once, in `Shared/Build/Stellar.Versions.props`. The pages about the engine as a whole live in
-the core, in `Docs/Engine/`, since the mirror is generated and holds nothing of its own; the site of the core leaves
-them out and links to the site of the engine instead.
+GitHub Pages of the core keeps the installer (`/install.ps1`) and the JSON schemas (`/schemas/`) at `StellarSiteUri`.
+All the addresses and projects are set once, in `Shared/Build/Stellar.Versions.props`. The pages about the engine as
+a whole live in the core, in `Docs/Engine/`, since the mirror is generated and holds nothing of its own.
 
-The workflow tells the mirror by the `.orchestra` file `scripts/mirror.ps1` puts at the root of each snapshot (the
-commits and the repositories it was made of): there it runs `scripts/orchestra-site.ps1`, which writes
-`docfx.orchestra.json`, and builds that instead of `docfx.json`.
+`prometheus.json` of the core names `scripts/prometheus.ps1`, which the workflow runs first: it describes the core, or,
+where the `.orchestra` file of `scripts/mirror.ps1` is (the mirror), the whole engine. See
+[Writing the documentation](Documentation.md).
 
 ### Releases
 
@@ -182,25 +184,27 @@ A release starts as a decision: a new `StellarOrchesterVersion` in `Shared/Build
 
 1. a push of that version to `master` of the core: `.github/workflows/release.yml` sees a version without a tag, tags
    the commit `v<version>` and publishes a GitHub release of the core with the versions of its components;
-2. the next run of the mirror (`.github/workflows/mirror.yml`, nightly or Run workflow; at once with the secret
-   `STELLAR_DISPATCH_TOKEN` in the core) makes a snapshot with the new core, sees the same version without a tag in
-   the mirror, tags the snapshot `v<version>` and publishes the release of the orchestra: every component, its
-   version and its commit;
+2. that release starts the mirror (`.github/workflows/mirror.yml`) when the core has `STELLAR_MIRROR_APP_ID` and
+   `STELLAR_MIRROR_APP_KEY`; without them Run workflow there does. It makes a snapshot with the new core, sees the same
+   version without a tag in the mirror, tags the snapshot `v<version>` and publishes the release of the orchestra:
+   every component, its version and its commit. It takes the default branch of each module, so the modules of a release
+   are merged there before the core;
 3. the installer installs the latest release by default: it reads `.orchestra` at that tag.
 
 A version with a suffix (`0.9.0-rc.1`) is a pre-release, which the installer takes only when asked for by name.
 
 ### The mirror regenerates itself
 
-`.github/workflows/mirror.yml` runs in the mirror (where the repository variable `STELLAR_MIRROR` is `true`) every
-night and on demand: it clones every component the last `.orchestra` names, at its default branch, makes a snapshot
+`.github/workflows/mirror.yml` runs in the mirror (where the repository variable `STELLAR_MIRROR` is `true`) on a
+release of the core and on demand, never on a timer: it clones every component the last `.orchestra` names, at its default branch, makes a snapshot
 when anything changed and pushes it, which starts the docs workflow. A component it cannot clone (a private repository) is
 kept as the mirror has it (`scripts/mirror.ps1 -Keep`); the secret `STELLAR_MIRROR_TOKEN` lets it read private ones
 too. The first snapshot comes from a machine: `scripts/mirror.ps1 -Push`.
 
 The rulesets of the mirror let nobody write its branch, so the workflow pushes with the token of a GitHub App, installed
 on the mirror only and in the bypass list of the ruleset (`STELLAR_MIRROR_APP_ID`, `STELLAR_MIRROR_APP_KEY`). The token
-of a workflow does not do: it passes no ruleset, and cannot change the files of `.github/workflows/`.
+of a workflow does not do: it passes no ruleset, and cannot change the files of `.github/workflows/`. Run workflow takes
+a new component in its `add` field, `modules/<Name>` or `tools/<Name>`: a public repository of the organization.
 
 After that the workflow is the only writer of the mirror: on a machine, `scripts/mirror.ps1` without `-Push` shows
 what the next snapshot would be, and Run workflow publishes it. A snapshot is always made on top of the last one of

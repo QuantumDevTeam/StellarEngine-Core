@@ -2,10 +2,10 @@
 
 # StellarEngine-Core
 
-The core of [StellarEngine](https://quantumdevteam.github.io/StellarEngine-Mono/): the one component installed into the
+The core of [StellarEngine](prometheus:stellar-engine): the one component installed into the
 root of every installation. This site is about the core alone: how it is built, the formats it reads, the SDK it gives
 modules and games, and its API. Everything about the engine as a whole (installing it, getting started, the
-architecture, the modules, the orchestra) is on the [site of the engine](https://quantumdevteam.github.io/StellarEngine-Mono/).
+architecture, the modules, the orchestra) is on the [site of the engine](prometheus:stellar-engine).
 
 ## What the core is
 
@@ -41,6 +41,7 @@ The JSON schemas of these files are published here, under [`/schemas/`](https://
 - [API reference](xref:Stellar.Kernel), generated from the code of `Stellar.Kernel`, `Stellar.Core`, `Stellar.Runtime` and `Stellar.Tools`
 - [SDK properties and items](Reference/Sdk.Properties.md)
 - [Diagnostics](Reference/Diagnostics.md)
+- [Migrating to 0.11](Migration-0.11.md)
 - [Migrating to 0.10](Migration-0.10.md)
 - [Migrating to 0.9](Migration-0.9.md)
 - [Migrating to 0.8](Migration-0.8.md)

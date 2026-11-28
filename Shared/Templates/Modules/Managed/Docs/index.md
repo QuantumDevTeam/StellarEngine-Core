@@ -2,8 +2,7 @@
 
 {{ModuleDescription}}
 
-A `{{ModuleLevel}}` module of [StellarEngine]({{EngineSiteUri}}). Its site is {{ModuleSiteUri}}, built from the Markdown
-files of `Docs/` with DocFX; the whole engine, with every module, is on the [site of the engine]({{EngineSiteUri}}).
+A `{{ModuleLevel}}` module of [StellarEngine](prometheus:{{EngineDocsProject}}). Its documentation is on the [docs site](prometheus:{{ModuleDocsProject}}), built from the Markdown files of `Docs/`; the whole engine, with every module, is on the [site of the engine](prometheus:{{EngineDocsProject}}).
 
 ## Using it
 

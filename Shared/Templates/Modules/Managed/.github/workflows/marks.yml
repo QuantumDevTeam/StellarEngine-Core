@@ -1,0 +1,15 @@
+name: Marks
+
+# The marks in the comments of the code, checked by the workflow of the core (Docs/Engine/Marks.md there).
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  marks:
+    uses: QuantumDevTeam/StellarEngine-Core/.github/workflows/marks.yml@develop

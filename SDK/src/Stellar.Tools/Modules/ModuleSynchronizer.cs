@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+
+using Stellar.Kernel.Configuration.Manifest;
 using Stellar.Tools.Diagnostics;
 using Stellar.Tools.Environment;
 using Stellar.Tools.Manifests;
@@ -27,17 +29,17 @@ public static class ModuleSynchronizer
     /// <exception cref="ToolException">Thrown if the modules break the rules.</exception>
     public static ModuleSet Load(StellarInstallation installation)
     {
-        var manifest = EngineManifestStore.Load(installation.EngineManifest);
-        var resolution = ModuleResolver.Resolve(installation, manifest);
+        EngineManifest manifest = EngineManifestStore.Load(installation.EngineManifest);
+        ModuleResolution resolution = ModuleResolver.Resolve(installation, manifest);
 
         if (!resolution.IsValid)
             throw Failure(resolution.Errors);
 
-        var graph = ModuleGraph.Analyze(resolution.Modules.Select(module => module.Descriptor));
+        ModuleGraphResult graph = ModuleGraph.Analyze(resolution.Modules.Select(module => module.Descriptor));
         if (!graph.IsValid)
             throw Failure(graph.Errors);
 
-        var byId = resolution.Modules.ToDictionary(module => module.Id);
+        Dictionary<string, ResolvedModule> byId = resolution.Modules.ToDictionary(module => module.Id);
         return new ModuleSet(resolution, graph.LoadOrder.Select(descriptor => byId[descriptor.Id]).ToList());
     }
 
@@ -50,15 +52,15 @@ public static class ModuleSynchronizer
     /// <exception cref="ToolException">Thrown if the modules break the rules. Nothing is written then.</exception>
     public static ModuleSet Synchronize(StellarInstallation installation, IToolLogger logger)
     {
-        var set = Load(installation);
+        ModuleSet set = Load(installation);
 
-        foreach (var warning in set.Resolution.Warnings)
+        foreach (string warning in set.Resolution.Warnings)
             logger.Warning(warning);
 
-        var catalogChanged =
+        bool catalogChanged =
             FileWriter.WriteAllText(installation.ModuleCatalog, ModuleCatalogGenerator.Render(set.LoadOrder));
-        var lockChanged = FileWriter.WriteAllText(installation.ModuleLock,
-            StellarJson.Serialize(new ModuleLockFile(set.LoadOrder)));
+        bool lockChanged =
+            FileWriter.WriteAllText(installation.ModuleLock, StellarJson.Serialize(new ModuleLockFile(set.LoadOrder)));
 
         if (catalogChanged || lockChanged)
             logger.Info($"Module catalog updated: {set.LoadOrder.Count} module(s), {installation.ModuleCatalog}");
