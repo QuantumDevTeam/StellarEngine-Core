@@ -68,7 +68,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force packages | Out-Null
-          ./scripts/build.ps1 -Configuration Debug -SkipTests -Install -NoUserRegistration
+          ./scripts/build.ps1 -Configuration Debug -SkipTests -Install -NoUserRegistration -SkipModules
 
       - name: Build and test the module
         if: env.IS_CORE != 'true'

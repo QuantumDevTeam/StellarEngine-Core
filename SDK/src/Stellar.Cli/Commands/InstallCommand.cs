@@ -1,37 +1,11 @@
 using System.ComponentModel;
+
 using Spectre.Console.Cli;
+
 using Stellar.Tools.Environment;
 using Stellar.Tools.Installation;
 
 namespace Stellar.Cli.Commands;
-
-public sealed class InstallSettings
-    : CommandSettings
-{
-    [CommandArgument(0, "[PATH]")]
-    [Description(
-        "The checkout of StellarEngine-Core to turn into an installation. $STELLAR_ROOT or the current directory when omitted")]
-    public string? Path { get; set; }
-
-    [CommandOption("--no-user-registration")]
-    [Description("Do not register this installation for the current user ($STELLAR_HOME or ~/.stellar)")]
-    public bool NoUserRegistration { get; set; }
-}
-
-public sealed class InstallCommand
-    : Command<InstallSettings>
-{
-    public override int Execute(CommandContext context, InstallSettings settings)
-    {
-        var installation = new StellarInstallation(InstallationPaths.Root(settings.Path));
-        EngineInstaller.Install(installation, ConsoleToolLogger.Instance,
-            settings.NoUserRegistration ? null : InstallationRegistry.ForCurrentUser());
-
-        // Packed again under the same versions: the games must not keep the copies NuGet unpacked before
-        PackageCache.RefreshStale(installation.Packages, null, ConsoleToolLogger.Instance);
-        return 0;
-    }
-}
 
 /// <summary>
 /// What install and uninstall take from the machine.
@@ -53,6 +27,34 @@ internal static class InstallationPaths
     /// </summary>
     public static string PackageCache()
     {
-        return Stellar.Tools.Installation.PackageCache.Location();
+        return Tools.Installation.PackageCache.Location();
+    }
+}
+
+public sealed class InstallSettings
+    : CommandSettings
+{
+    [CommandArgument(0, "[PATH]")]
+    [Description("The checkout of StellarEngine-Core to turn into an installation. " +
+                 "$STELLAR_ROOT or the current directory when omitted")]
+    public string? Path { get; set; }
+
+    [CommandOption("--no-user-registration")]
+    [Description("Do not register this installation for the current user ($STELLAR_HOME or ~/.stellar)")]
+    public bool NoUserRegistration { get; set; }
+}
+
+public sealed class InstallCommand
+    : Command<InstallSettings>
+{
+    public override int Execute(CommandContext context, InstallSettings settings)
+    {
+        var installation = new StellarInstallation(InstallationPaths.Root(settings.Path));
+        EngineInstaller.Install(installation, ConsoleToolLogger.Instance,
+            settings.NoUserRegistration ? null : InstallationRegistry.ForCurrentUser());
+
+        // Packed again under the same versions: the games must not keep the copies NuGet unpacked before
+        PackageCache.RefreshStale(installation.Packages, null, ConsoleToolLogger.Instance);
+        return 0;
     }
 }

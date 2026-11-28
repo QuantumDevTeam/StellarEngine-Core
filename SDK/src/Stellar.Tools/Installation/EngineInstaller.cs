@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+
 using Stellar.Kernel.Configuration.Manifest;
 using Stellar.Tools.Diagnostics;
 using Stellar.Tools.Environment;
@@ -41,7 +42,7 @@ public static class EngineInstaller
             throw new ToolException(
                 $"{installation.Root} is not a checkout of StellarEngine-Core: the root of an installation is the core itself");
 
-        foreach (var directory in new[]
+        foreach (string directory in new[]
                  {
                      installation.Modules, installation.Packages, installation.Manifests, installation.Config,
                      installation.Tools, installation.ResourceCompilers, installation.Projects
